@@ -51,6 +51,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [user, authLoading, navigate]);
 
+  // Redirect to onboarding if no restaurant
+  useEffect(() => {
+    if (!authLoading && !restaurantLoading && user && !restaurant) {
+      navigate("/onboarding");
+    }
+  }, [user, authLoading, restaurantLoading, restaurant, navigate]);
+
   const handleSignOut = async () => {
     await signOut();
     toast({
@@ -68,7 +75,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  if (!user) {
+  if (!user || !restaurant) {
     return null;
   }
 
