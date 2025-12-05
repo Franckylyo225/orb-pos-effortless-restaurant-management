@@ -545,6 +545,41 @@ export type Database = {
           },
         ]
       }
+      user_restaurants: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_owner: boolean
+          restaurant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_owner?: boolean
+          restaurant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_owner?: boolean
+          restaurant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_restaurants_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -579,6 +614,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_subscription_restaurant_limit: {
+        Args: { plan_name: string }
+        Returns: number
+      }
+      get_user_restaurant_count: { Args: { _user_id: string }; Returns: number }
       get_user_restaurant_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
