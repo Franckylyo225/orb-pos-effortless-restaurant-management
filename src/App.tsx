@@ -12,6 +12,8 @@ import POS from "./pages/POS";
 import Tables from "./pages/Tables";
 import Menu from "./pages/Menu";
 import Stock from "./pages/Stock";
+import Settings from "./pages/Settings";
+import Subscription from "./pages/Subscription";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +34,8 @@ const App = () => (
             <Route path="/dashboard/tables" element={<Tables />} />
             <Route path="/dashboard/menu" element={<Menu />} />
             <Route path="/dashboard/stock" element={<Stock />} />
+            <Route path="/dashboard/settings" element={<Settings />} />
+            <Route path="/dashboard/subscription" element={<Subscription />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
