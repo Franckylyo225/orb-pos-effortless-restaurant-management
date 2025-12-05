@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRestaurant } from "@/hooks/useRestaurant";
-import { Loader2, ChefHat, ArrowRight } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2, ChefHat, ArrowRight, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Check } from "lucide-react";
 
 const cuisineTypes = [
   "Africaine",
@@ -37,18 +46,27 @@ const teamSizes = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { createRestaurant } = useRestaurant();
+  const { user, loading: authLoading } = useAuth();
+  const { createRestaurant, restaurants, loading: restaurantLoading, getRestaurantLimit } = useRestaurant();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     cuisine_type: "",
     team_size: "2",
   });
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login");
+    }
+  }, [user, authLoading, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       toast({
         title: "Erreur",
@@ -60,16 +78,22 @@ export default function Onboarding() {
 
     setIsSubmitting(true);
 
-    const { error } = await createRestaurant({
+    const result = await createRestaurant({
       name: formData.name,
       cuisine_type: formData.cuisine_type || undefined,
       team_size: parseInt(formData.team_size),
     });
 
-    if (error) {
+    if (result.upgradeRequired) {
+      setShowUpgradeDialog(true);
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (result.error) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de créer le restaurant",
+        description: result.error.message || "Impossible de créer le restaurant",
         variant: "destructive",
       });
       setIsSubmitting(false);
@@ -85,16 +109,32 @@ export default function Onboarding() {
     navigate("/dashboard");
   };
 
+  const isAddingNew = restaurants.length > 0;
+  const limit = getRestaurantLimit();
+
+  if (authLoading || restaurantLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="p-6 border-b border-border">
+      <header className="p-6 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
             <ChefHat size={24} />
           </div>
           <span className="font-display font-bold text-xl">RestoFlow</span>
         </div>
+        {isAddingNew && (
+          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+            Retour au dashboard
+          </Button>
+        )}
       </header>
 
       {/* Main Content */}
@@ -102,10 +142,12 @@ export default function Onboarding() {
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <h1 className="font-display text-3xl font-bold mb-2">
-              Configurez votre restaurant
+              {isAddingNew ? "Ajouter un restaurant" : "Configurez votre restaurant"}
             </h1>
             <p className="text-muted-foreground">
-              Quelques informations pour personnaliser votre expérience
+              {isAddingNew
+                ? `Vous pouvez gérer jusqu'à ${limit === 999 ? "∞" : limit} restaurant${limit > 1 ? "s" : ""} avec votre abonnement`
+                : "Quelques informations pour personnaliser votre expérience"}
             </p>
           </div>
 
@@ -185,6 +227,61 @@ export default function Onboarding() {
           </p>
         </div>
       </main>
+
+      {/* Upgrade Dialog */}
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="text-warning" size={24} />
+              Limite atteinte
+            </DialogTitle>
+            <DialogDescription>
+              Votre abonnement actuel vous permet de gérer {limit} restaurant
+              {limit > 1 ? "s" : ""}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+              <h4 className="font-semibold">Passez à un plan supérieur</h4>
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-success" />
+                  <span>
+                    <strong>Pro</strong> : jusqu'à 3 restaurants
+                  </span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check size={16} className="text-success" />
+                  <span>
+                    <strong>Premium</strong> : restaurants illimités
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowUpgradeDialog(false)}
+              >
+                Plus tard
+              </Button>
+              <Button
+                variant="hero"
+                className="flex-1"
+                onClick={() => {
+                  setShowUpgradeDialog(false);
+                  navigate("/dashboard/subscription");
+                }}
+              >
+                <Crown size={16} className="mr-2" />
+                Voir les offres
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

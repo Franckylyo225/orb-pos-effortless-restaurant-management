@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useToast } from "@/hooks/use-toast";
+import { RestaurantSwitcher } from "./RestaurantSwitcher";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Vue d'ensemble", href: "/dashboard" },
@@ -29,8 +31,6 @@ const menuItems = [
   { icon: BarChart3, label: "Rapports", href: "/dashboard/reports" },
   { icon: Settings, label: "Paramètres", href: "/dashboard/settings" },
 ];
-
-import { CreditCard } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -128,21 +128,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           })}
         </nav>
 
-        {/* Restaurant Info & Logout */}
+        {/* Restaurant Switcher & Logout */}
         <div className="p-3 border-t border-border space-y-2">
+          <RestaurantSwitcher collapsed={collapsed} />
           {!collapsed && (
-            <Link 
+            <Link
               to="/dashboard/subscription"
               className="block px-3 py-2 rounded-lg hover:bg-muted transition-colors"
             >
-              <p className="font-medium text-sm truncate">
-                {restaurant?.name || "Mon Restaurant"}
-              </p>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <CreditCard size={12} />
                 <span>
-                  {restaurant?.subscription_plan === "premium" ? "Plan Premium" : 
-                   restaurant?.subscription_plan === "pro" ? "Plan Pro" : "Plan Basic"}
+                  {restaurant?.subscription_plan === "premium"
+                    ? "Plan Premium"
+                    : restaurant?.subscription_plan === "pro"
+                    ? "Plan Pro"
+                    : "Plan Basic"}
                 </span>
               </div>
             </Link>
