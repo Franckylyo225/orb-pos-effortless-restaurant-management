@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Building2, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRestaurant } from "@/hooks/useRestaurant";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -20,6 +22,15 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp, user, loading } = useAuth();
+  const { createRestaurant } = useRestaurant();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
 
   const updateFormData = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -29,16 +40,61 @@ export default function Register() {
     e.preventDefault();
     
     if (step < 2) {
+      // First step: create account
+      setIsLoading(true);
+      
+      const { error } = await signUp(formData.email, formData.password, formData.name);
+      
+      if (error) {
+        let message = "Une erreur est survenue lors de l'inscription.";
+        if (error.message.includes("already registered")) {
+          message = "Cet email est déjà utilisé. Veuillez vous connecter.";
+        } else if (error.message.includes("Password")) {
+          message = "Le mot de passe doit contenir au moins 6 caractères.";
+        }
+        toast({
+          title: "Erreur d'inscription",
+          description: message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(false);
       setStep(step + 1);
       return;
     }
 
+    // Second step: create restaurant
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    const teamSizeMap: Record<string, number> = {
+      "1-5 employés": 5,
+      "6-15 employés": 15,
+      "16-30 employés": 30,
+      "30+ employés": 50,
+    };
+
+    const { error } = await createRestaurant({
+      name: formData.restaurantName,
+      cuisine_type: formData.cuisineType,
+      team_size: teamSizeMap[formData.teamSize] || 5,
+    });
+
+    if (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le restaurant. Veuillez réessayer.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
 
     toast({
       title: "Compte créé avec succès !",
-      description: "Bienvenue sur ORBI POS. Configurez votre restaurant.",
+      description: "Bienvenue sur ORBI POS. Votre restaurant est prêt.",
     });
 
     navigate("/dashboard");
@@ -60,6 +116,14 @@ export default function Register() {
     "16-30 employés",
     "30+ employés",
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -150,11 +214,11 @@ export default function Register() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Minimum 8 caractères"
+                      placeholder="Minimum 6 caractères"
                       value={formData.password}
                       onChange={(e) => updateFormData("password", e.target.value)}
                       className="pl-10 pr-10 h-12"
-                      minLength={8}
+                      minLength={6}
                       required
                     />
                     <button
@@ -235,7 +299,7 @@ export default function Register() {
               disabled={isLoading}
             >
               {isLoading ? (
-                "Création en cours..."
+                "Chargement..."
               ) : step < 2 ? (
                 <>
                   Continuer

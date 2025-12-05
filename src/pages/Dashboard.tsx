@@ -7,10 +7,11 @@ import {
   Users,
   AlertTriangle,
   ArrowRight,
-  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRestaurant } from "@/hooks/useRestaurant";
 
 const stats = [
   {
@@ -68,6 +69,11 @@ const topProducts = [
 ];
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const { profile, restaurant } = useRestaurant();
+
+  const displayName = profile?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "Utilisateur";
+
   return (
     <DashboardLayout>
       <div className="p-6 md:p-8 space-y-8">
@@ -75,10 +81,10 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl md:text-3xl font-bold">
-              Bonjour, Jean 👋
+              Bonjour, {displayName} 👋
             </h1>
             <p className="text-muted-foreground mt-1">
-              Voici un aperçu de votre restaurant aujourd'hui.
+              Voici un aperçu de {restaurant?.name || "votre restaurant"} aujourd'hui.
             </p>
           </div>
           <Button variant="hero" asChild>

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -13,8 +13,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRestaurant } from "@/hooks/useRestaurant";
+import { useToast } from "@/hooks/use-toast";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Vue d'ensemble", href: "/dashboard" },
@@ -34,6 +37,38 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut, loading: authLoading } = useAuth();
+  const { restaurant, profile, loading: restaurantLoading } = useRestaurant();
+  const { toast } = useToast();
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login");
+    }
+  }, [user, authLoading, navigate]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Déconnexion réussie",
+      description: "À bientôt !",
+    });
+    navigate("/");
+  };
+
+  if (authLoading || restaurantLoading) {
+    return (
+      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
@@ -88,12 +123,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="p-3 border-t border-border space-y-2">
           {!collapsed && (
             <div className="px-3 py-2">
-              <p className="font-medium text-sm truncate">Le Baobab</p>
-              <p className="text-xs text-muted-foreground">Plan Pro</p>
+              <p className="font-medium text-sm truncate">
+                {restaurant?.name || "Mon Restaurant"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {restaurant?.subscription_plan === "premium" ? "Plan Premium" : 
+                 restaurant?.subscription_plan === "pro" ? "Plan Pro" : "Plan Basic"}
+              </p>
             </div>
           )}
           <Button
             variant="ghost"
+            onClick={handleSignOut}
             className={cn(
               "w-full justify-start text-muted-foreground hover:text-destructive",
               collapsed && "justify-center px-0"
