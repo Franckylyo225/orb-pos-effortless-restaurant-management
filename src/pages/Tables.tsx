@@ -1,60 +1,72 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Users, Clock, Utensils, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Plus,
+  Users,
+  Trash2,
+  Loader2,
+  Clock,
+  Utensils,
+  ArrowRight,
+} from "lucide-react";
+import { useOrders, Table } from "@/hooks/useOrders";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
-interface Table {
-  id: number;
-  name: string;
-  seats: number;
-  status: "free" | "occupied" | "waiting" | "cleaning";
-  server?: string;
-  orderTotal?: number;
-  time?: string;
-}
-
-const initialTables: Table[] = [
-  { id: 1, name: "Table 1", seats: 2, status: "free" },
-  { id: 2, name: "Table 2", seats: 2, status: "occupied", server: "Marie", orderTotal: 24500, time: "45 min" },
-  { id: 3, name: "Table 3", seats: 4, status: "occupied", server: "Kofi", orderTotal: 54200, time: "1h 20" },
-  { id: 4, name: "Table 4", seats: 4, status: "free" },
-  { id: 5, name: "Table 5", seats: 6, status: "waiting", server: "Awa" },
-  { id: 6, name: "Table 6", seats: 6, status: "occupied", server: "Marie", orderTotal: 32500, time: "30 min" },
-  { id: 7, name: "Table 7", seats: 8, status: "cleaning" },
-  { id: 8, name: "Table 8", seats: 8, status: "free" },
-  { id: 9, name: "Comptoir 1", seats: 1, status: "occupied", server: "Kofi", orderTotal: 8500, time: "15 min" },
-  { id: 10, name: "Comptoir 2", seats: 1, status: "free" },
-  { id: 11, name: "Terrasse 1", seats: 4, status: "occupied", server: "Awa", orderTotal: 45000, time: "55 min" },
-  { id: 12, name: "Terrasse 2", seats: 4, status: "free" },
-];
-
-const statusConfig = {
-  free: {
-    label: "Libre",
-    color: "bg-success/20 border-success text-success",
-    bgColor: "bg-success/10",
-  },
-  occupied: {
-    label: "Occupée",
-    color: "bg-primary/20 border-primary text-primary",
-    bgColor: "bg-primary/10",
-  },
-  waiting: {
-    label: "En attente",
-    color: "bg-warning/20 border-warning text-warning",
-    bgColor: "bg-warning/10",
-  },
-  cleaning: {
-    label: "Nettoyage",
-    color: "bg-muted border-muted-foreground/30 text-muted-foreground",
-    bgColor: "bg-muted",
-  },
+const statusColors: Record<Table["status"], { bg: string; border: string; text: string; label: string }> = {
+  free: { bg: "bg-success/10", border: "border-success", text: "text-success", label: "Libre" },
+  occupied: { bg: "bg-primary/10", border: "border-primary", text: "text-primary", label: "Occupée" },
+  reserved: { bg: "bg-warning/10", border: "border-warning", text: "text-warning", label: "Réservée" },
+  cleaning: { bg: "bg-muted", border: "border-muted-foreground/30", text: "text-muted-foreground", label: "Nettoyage" },
 };
 
 export default function Tables() {
-  const [tables, setTables] = useState(initialTables);
+  const { tables, activeOrders, loading, addTable, updateTableStatus, deleteTable } = useOrders();
+  const [showAddTable, setShowAddTable] = useState(false);
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [filter, setFilter] = useState<"all" | Table["status"]>("all");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newTable, setNewTable] = useState({
+    name: "",
+    capacity: "4",
+    shape: "square",
+  });
+
+  const handleAddTable = async () => {
+    if (!newTable.name) return;
+
+    setIsSubmitting(true);
+    await addTable({
+      name: newTable.name,
+      capacity: parseInt(newTable.capacity),
+      shape: newTable.shape,
+    });
+
+    setNewTable({ name: "", capacity: "4", shape: "square" });
+    setShowAddTable(false);
+    setIsSubmitting(false);
+  };
+
+  const getTableOrder = (tableId: string) => {
+    return activeOrders.find((order) => order.table_id === tableId);
+  };
 
   const filteredTables = tables.filter(
     (table) => filter === "all" || table.status === filter
@@ -63,16 +75,24 @@ export default function Tables() {
   const stats = {
     free: tables.filter((t) => t.status === "free").length,
     occupied: tables.filter((t) => t.status === "occupied").length,
-    waiting: tables.filter((t) => t.status === "waiting").length,
+    reserved: tables.filter((t) => t.status === "reserved").length,
     cleaning: tables.filter((t) => t.status === "cleaning").length,
   };
 
-  const updateTableStatus = (id: number, status: Table["status"]) => {
-    setTables((prev) =>
-      prev.map((table) => (table.id === id ? { ...table, status } : table))
-    );
+  const handleStatusChange = async (tableId: string, status: Table["status"]) => {
+    await updateTableStatus(tableId, status);
     setSelectedTable(null);
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -80,64 +100,136 @@ export default function Tables() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl md:text-3xl font-bold">
-              Plan de salle
-            </h1>
+            <h1 className="font-display text-2xl md:text-3xl font-bold">Plan de salle</h1>
             <p className="text-muted-foreground mt-1">
-              Gérez vos tables en temps réel
+              {tables.length} tables • {stats.occupied} occupées
             </p>
           </div>
+          <Dialog open={showAddTable} onOpenChange={setShowAddTable}>
+            <DialogTrigger asChild>
+              <Button variant="hero">
+                <Plus size={20} className="mr-2" />
+                Ajouter une table
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nouvelle table</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Nom de la table *</Label>
+                  <Input
+                    placeholder="Ex: Table 1, Terrasse A..."
+                    value={newTable.name}
+                    onChange={(e) => setNewTable({ ...newTable, name: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Capacité</Label>
+                    <Select
+                      value={newTable.capacity}
+                      onValueChange={(value) => setNewTable({ ...newTable, capacity: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[2, 4, 6, 8, 10, 12].map((num) => (
+                          <SelectItem key={num} value={String(num)}>
+                            {num} personnes
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Forme</Label>
+                    <Select
+                      value={newTable.shape}
+                      onValueChange={(value) => setNewTable({ ...newTable, shape: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="square">Carrée</SelectItem>
+                        <SelectItem value="circle">Ronde</SelectItem>
+                        <SelectItem value="rectangle">Rectangle</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button className="w-full" onClick={handleAddTable} disabled={isSubmitting || !newTable.name}>
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Ajouter
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {(Object.keys(statusConfig) as Array<keyof typeof statusConfig>).map(
-            (status) => (
-              <button
-                key={status}
-                onClick={() => setFilter(filter === status ? "all" : status)}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  filter === status
-                    ? statusConfig[status].color
-                    : "border-border hover:border-primary/30"
-                }`}
-              >
-                <p className="text-2xl font-bold">{stats[status]}</p>
-                <p className="text-sm">{statusConfig[status].label}</p>
-              </button>
-            )
-          )}
+          {(Object.keys(statusColors) as Array<Table["status"]>).map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilter(filter === status ? "all" : status)}
+              className={cn(
+                "p-4 rounded-xl border-2 transition-all",
+                filter === status
+                  ? `${statusColors[status].bg} ${statusColors[status].border} ${statusColors[status].text}`
+                  : "border-border hover:border-primary/30"
+              )}
+            >
+              <p className="text-2xl font-bold">{stats[status]}</p>
+              <p className="text-sm">{statusColors[status].label}</p>
+            </button>
+          ))}
         </div>
+
+        {/* Empty State */}
+        {tables.length === 0 && (
+          <div className="text-center py-16 bg-muted/30 rounded-2xl">
+            <p className="text-4xl mb-4">🪑</p>
+            <h3 className="font-semibold text-lg mb-2">Aucune table</h3>
+            <p className="text-muted-foreground mb-4">Ajoutez des tables pour gérer votre salle</p>
+            <Button variant="hero" onClick={() => setShowAddTable(true)}>
+              <Plus size={20} className="mr-2" />
+              Ajouter une table
+            </Button>
+          </div>
+        )}
 
         {/* Tables Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {filteredTables.map((table) => {
-            const config = statusConfig[table.status];
+            const config = statusColors[table.status];
+            const order = getTableOrder(table.id);
+
             return (
               <button
                 key={table.id}
                 onClick={() => setSelectedTable(table)}
-                className={`table-cell p-4 border-2 ${config.color} ${config.bgColor}`}
+                className={cn(
+                  "table-cell p-4 border-2 rounded-xl transition-all hover:shadow-medium",
+                  config.bg,
+                  config.border,
+                  table.shape === "circle" && "rounded-full aspect-square"
+                )}
               >
                 <span className="text-lg font-bold">{table.name}</span>
                 <div className="flex items-center gap-1 text-xs opacity-80">
                   <Users size={12} />
-                  {table.seats}
+                  {table.capacity}
                 </div>
-                {table.status === "occupied" && (
+                {table.status === "occupied" && order && (
                   <>
-                    <p className="text-xs font-medium mt-1">{table.server}</p>
-                    <p className="text-sm font-bold">
-                      {table.orderTotal?.toLocaleString()} CFA
+                    <p className="text-sm font-bold mt-2">
+                      {Number(order.total).toLocaleString()} CFA
                     </p>
-                    <div className="flex items-center gap-1 text-xs">
-                      <Clock size={10} />
-                      {table.time}
-                    </div>
                   </>
-                )}
-                {table.status === "waiting" && (
-                  <p className="text-xs font-medium mt-1">{table.server}</p>
                 )}
               </button>
             );
@@ -148,50 +240,50 @@ export default function Tables() {
         {selectedTable && (
           <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4">
             <div className="bg-card rounded-2xl shadow-large w-full max-w-sm animate-scale-in">
-              <div className="p-6 border-b border-border">
-                <h2 className="font-display font-bold text-xl">
-                  {selectedTable.name}
-                </h2>
-                <div className="flex items-center gap-4 mt-2 text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Users size={16} />
-                    {selectedTable.seats} places
-                  </span>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      statusConfig[selectedTable.status].color
-                    }`}
-                  >
-                    {statusConfig[selectedTable.status].label}
-                  </span>
+              <div className="p-6 border-b border-border flex items-center justify-between">
+                <div>
+                  <h2 className="font-display font-bold text-xl">{selectedTable.name}</h2>
+                  <div className="flex items-center gap-4 mt-2 text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Users size={16} />
+                      {selectedTable.capacity} places
+                    </span>
+                    <span className={cn("px-2 py-1 rounded-full text-xs", statusColors[selectedTable.status].bg, statusColors[selectedTable.status].text)}>
+                      {statusColors[selectedTable.status].label}
+                    </span>
+                  </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive"
+                  onClick={async () => {
+                    await deleteTable(selectedTable.id);
+                    setSelectedTable(null);
+                  }}
+                >
+                  <Trash2 size={18} />
+                </Button>
               </div>
 
               <div className="p-6 space-y-4">
-                {selectedTable.status === "occupied" && (
+                {selectedTable.status === "occupied" && getTableOrder(selectedTable.id) && (
                   <div className="p-4 rounded-xl bg-muted/50 space-y-2">
-                    <p className="text-sm text-muted-foreground">Serveur</p>
-                    <p className="font-medium">{selectedTable.server}</p>
-                    <p className="text-sm text-muted-foreground mt-3">Total commande</p>
+                    <p className="text-sm text-muted-foreground">Commande en cours</p>
                     <p className="text-2xl font-bold text-primary">
-                      {selectedTable.orderTotal?.toLocaleString()} CFA
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Temps: {selectedTable.time}
+                      {Number(getTableOrder(selectedTable.id)?.total).toLocaleString()} CFA
                     </p>
                   </div>
                 )}
 
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Changer le statut
-                  </p>
+                  <p className="text-sm font-medium text-muted-foreground">Changer le statut</p>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       className="justify-start"
-                      onClick={() => updateTableStatus(selectedTable.id, "free")}
+                      onClick={() => handleStatusChange(selectedTable.id, "free")}
                     >
                       <div className="w-3 h-3 rounded-full bg-success mr-2" />
                       Libre
@@ -200,7 +292,7 @@ export default function Tables() {
                       variant="outline"
                       size="sm"
                       className="justify-start"
-                      onClick={() => updateTableStatus(selectedTable.id, "occupied")}
+                      onClick={() => handleStatusChange(selectedTable.id, "occupied")}
                     >
                       <div className="w-3 h-3 rounded-full bg-primary mr-2" />
                       Occupée
@@ -209,16 +301,16 @@ export default function Tables() {
                       variant="outline"
                       size="sm"
                       className="justify-start"
-                      onClick={() => updateTableStatus(selectedTable.id, "waiting")}
+                      onClick={() => handleStatusChange(selectedTable.id, "reserved")}
                     >
                       <div className="w-3 h-3 rounded-full bg-warning mr-2" />
-                      En attente
+                      Réservée
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       className="justify-start"
-                      onClick={() => updateTableStatus(selectedTable.id, "cleaning")}
+                      onClick={() => handleStatusChange(selectedTable.id, "cleaning")}
                     >
                       <div className="w-3 h-3 rounded-full bg-muted-foreground mr-2" />
                       Nettoyage
@@ -226,23 +318,19 @@ export default function Tables() {
                   </div>
                 </div>
 
-                {selectedTable.status === "occupied" && (
+                {selectedTable.status === "free" && (
                   <Button variant="hero" className="w-full" asChild>
-                    <a href={`/dashboard/pos?table=${selectedTable.id}`}>
+                    <Link to={`/dashboard/pos`}>
                       <Utensils size={18} className="mr-2" />
-                      Voir commande
+                      Nouvelle commande
                       <ArrowRight size={16} className="ml-2" />
-                    </a>
+                    </Link>
                   </Button>
                 )}
               </div>
 
               <div className="p-4 border-t border-border">
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => setSelectedTable(null)}
-                >
+                <Button variant="ghost" className="w-full" onClick={() => setSelectedTable(null)}>
                   Fermer
                 </Button>
               </div>
