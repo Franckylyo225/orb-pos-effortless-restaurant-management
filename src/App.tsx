@@ -14,6 +14,7 @@ import Menu from "./pages/Menu";
 import Stock from "./pages/Stock";
 import Settings from "./pages/Settings";
 import Subscription from "./pages/Subscription";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/pos" element={<POS />} />
             <Route path="/dashboard/tables" element={<Tables />} />
