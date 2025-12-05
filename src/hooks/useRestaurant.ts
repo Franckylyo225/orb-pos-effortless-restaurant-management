@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +45,28 @@ export function useRestaurant() {
   const [restaurants, setRestaurants] = useState<UserRestaurant[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const isInitialLoad = useRef(true);
+
+  const activateRestaurant = async (userId: string, restaurantId: string) => {
+    // Deactivate all restaurants
+    await supabase
+      .from("user_restaurants")
+      .update({ is_active: false })
+      .eq("user_id", userId);
+
+    // Activate selected restaurant
+    await supabase
+      .from("user_restaurants")
+      .update({ is_active: true })
+      .eq("user_id", userId)
+      .eq("restaurant_id", restaurantId);
+
+    // Update profile restaurant_id for backward compatibility
+    await supabase
+      .from("profiles")
+      .update({ restaurant_id: restaurantId })
+      .eq("id", userId);
+  };
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -57,52 +79,66 @@ export function useRestaurant() {
 
     setLoading(true);
 
-    // Fetch profile
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .maybeSingle();
+    try {
+      // Fetch profile
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
 
-    if (profileError) {
-      console.error("Error fetching profile:", profileError);
-    } else {
-      setProfile(profileData);
-    }
-
-    // Fetch user's restaurants
-    const { data: userRestaurants, error: restaurantsError } = await supabase
-      .from("user_restaurants")
-      .select(`
-        id,
-        user_id,
-        restaurant_id,
-        is_owner,
-        is_active,
-        restaurant:restaurants(*)
-      `)
-      .eq("user_id", user.id);
-
-    if (restaurantsError) {
-      console.error("Error fetching user restaurants:", restaurantsError);
-    } else if (userRestaurants) {
-      const formattedRestaurants = userRestaurants.map((ur: any) => ({
-        ...ur,
-        restaurant: ur.restaurant as Restaurant,
-      }));
-      setRestaurants(formattedRestaurants);
-
-      // Set active restaurant
-      const activeRestaurant = formattedRestaurants.find((r) => r.is_active);
-      if (activeRestaurant) {
-        setRestaurant(activeRestaurant.restaurant);
-      } else if (formattedRestaurants.length > 0) {
-        // If no active, set first one as active
-        setRestaurant(formattedRestaurants[0].restaurant);
-        await switchRestaurant(formattedRestaurants[0].restaurant_id);
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+      } else {
+        setProfile(profileData);
       }
+
+      // Fetch user's restaurants
+      const { data: userRestaurants, error: restaurantsError } = await supabase
+        .from("user_restaurants")
+        .select(`
+          id,
+          user_id,
+          restaurant_id,
+          is_owner,
+          is_active,
+          restaurant:restaurants(*)
+        `)
+        .eq("user_id", user.id);
+
+      if (restaurantsError) {
+        console.error("Error fetching user restaurants:", restaurantsError);
+        setLoading(false);
+        return;
+      }
+
+      if (userRestaurants && userRestaurants.length > 0) {
+        const formattedRestaurants = userRestaurants.map((ur: any) => ({
+          ...ur,
+          restaurant: ur.restaurant as Restaurant,
+        }));
+        setRestaurants(formattedRestaurants);
+
+        // Set active restaurant
+        const activeRestaurant = formattedRestaurants.find((r) => r.is_active);
+        if (activeRestaurant) {
+          setRestaurant(activeRestaurant.restaurant);
+        } else {
+          // If no active, set first one as active
+          setRestaurant(formattedRestaurants[0].restaurant);
+          if (isInitialLoad.current) {
+            await activateRestaurant(user.id, formattedRestaurants[0].restaurant_id);
+          }
+        }
+      } else {
+        setRestaurants([]);
+        setRestaurant(null);
+      }
+    } catch (error) {
+      console.error("Error in fetchData:", error);
     }
 
+    isInitialLoad.current = false;
     setLoading(false);
   }, [user]);
 
@@ -110,16 +146,16 @@ export function useRestaurant() {
     fetchData();
   }, [fetchData]);
 
-  const getRestaurantLimit = (): number => {
+  const getRestaurantLimit = useCallback((): number => {
     if (!restaurant?.subscription_plan) return 1;
     return SUBSCRIPTION_LIMITS[restaurant.subscription_plan] || 1;
-  };
+  }, [restaurant?.subscription_plan]);
 
-  const canCreateNewRestaurant = (): boolean => {
+  const canCreateNewRestaurant = useCallback((): boolean => {
     const ownedRestaurants = restaurants.filter((r) => r.is_owner);
     const limit = getRestaurantLimit();
     return ownedRestaurants.length < limit;
-  };
+  }, [restaurants, getRestaurantLimit]);
 
   const createRestaurant = async (restaurantData: {
     name: string;
@@ -205,20 +241,19 @@ export function useRestaurant() {
   const switchRestaurant = async (restaurantId: string) => {
     if (!user) return { error: new Error("User not authenticated") };
 
-    // Deactivate all restaurants
-    await supabase
-      .from("user_restaurants")
-      .update({ is_active: false })
-      .eq("user_id", user.id);
+    try {
+      await activateRestaurant(user.id, restaurantId);
 
-    // Activate selected restaurant
-    const { error } = await supabase
-      .from("user_restaurants")
-      .update({ is_active: true })
-      .eq("user_id", user.id)
-      .eq("restaurant_id", restaurantId);
+      // Refresh data
+      await fetchData();
 
-    if (error) {
+      toast({
+        title: "Restaurant changé",
+        description: "Vous travaillez maintenant sur un autre restaurant",
+      });
+
+      return { error: null };
+    } catch (error: any) {
       toast({
         title: "Erreur",
         description: "Impossible de changer de restaurant",
@@ -226,22 +261,6 @@ export function useRestaurant() {
       });
       return { error };
     }
-
-    // Update profile restaurant_id for backward compatibility
-    await supabase
-      .from("profiles")
-      .update({ restaurant_id: restaurantId })
-      .eq("id", user.id);
-
-    // Refresh data
-    await fetchData();
-
-    toast({
-      title: "Restaurant changé",
-      description: "Vous travaillez maintenant sur un autre restaurant",
-    });
-
-    return { error: null };
   };
 
   return {
