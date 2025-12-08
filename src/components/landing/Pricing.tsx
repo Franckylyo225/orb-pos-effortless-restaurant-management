@@ -6,8 +6,8 @@ const plans = [
   {
     name: "Basic",
     description: "Pour les petits établissements",
-    price: "29",
-    currency: "€",
+    price: "19 000",
+    currency: "FCFA",
     period: "/mois",
     features: [
       "1 caisse (terminal)",
@@ -22,8 +22,8 @@ const plans = [
   {
     name: "Pro",
     description: "Pour les restaurants en croissance",
-    price: "79",
-    currency: "€",
+    price: "49 000",
+    currency: "FCFA",
     period: "/mois",
     features: [
       "3 caisses (terminaux)",
@@ -40,8 +40,8 @@ const plans = [
   {
     name: "Premium",
     description: "Pour les groupes de restaurants",
-    price: "199",
-    currency: "€",
+    price: "129 000",
+    currency: "FCFA",
     period: "/mois",
     features: [
       "Caisses illimitées",
@@ -101,8 +101,8 @@ export function Pricing() {
                 <h3 className="font-display font-bold text-xl mb-2">{plan.name}</h3>
                 <p className="text-muted-foreground text-sm">{plan.description}</p>
                 <div className="mt-4 flex items-baseline justify-center gap-1">
-                  <span className="text-4xl font-bold">{plan.currency}{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
+                  <span className="text-3xl md:text-4xl font-bold">{plan.price}</span>
+                  <span className="text-muted-foreground text-sm">{plan.currency}{plan.period}</span>
                 </div>
               </div>
 
@@ -133,7 +133,7 @@ export function Pricing() {
 
         {/* Additional Info */}
         <p className="text-center text-muted-foreground text-sm mt-12">
-          Tous les prix sont en euros. Paiement en CFA et autres devises disponible.
+          Tous les prix sont en Francs CFA (FCFA). TVA incluse.
           <br />
           <Link to="/pricing" className="text-primary hover:underline">
             Voir tous les détails des plans →
