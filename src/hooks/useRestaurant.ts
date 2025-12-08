@@ -161,6 +161,8 @@ export function useRestaurant() {
     name: string;
     cuisine_type?: string;
     team_size?: number;
+    address?: string;
+    logo_url?: string;
   }) => {
     if (!user) return { error: new Error("User not authenticated") };
 
@@ -182,6 +184,8 @@ export function useRestaurant() {
         name: restaurantData.name,
         cuisine_type: restaurantData.cuisine_type,
         team_size: restaurantData.team_size,
+        address: restaurantData.address,
+        logo_url: restaurantData.logo_url,
       })
       .select()
       .single();
