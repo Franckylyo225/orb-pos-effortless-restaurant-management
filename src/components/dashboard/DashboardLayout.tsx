@@ -51,10 +51,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [user, authLoading, navigate]);
 
-  // Redirect to onboarding if no restaurant
+  // Redirect to register if no restaurant (user needs to complete registration)
   useEffect(() => {
     if (!authLoading && !restaurantLoading && user && !restaurant) {
-      navigate("/onboarding");
+      navigate("/register");
     }
   }, [user, authLoading, restaurantLoading, restaurant, navigate]);
 

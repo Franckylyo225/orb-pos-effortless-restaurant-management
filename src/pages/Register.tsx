@@ -38,7 +38,7 @@ export default function Register() {
   const { signUp, user, loading } = useAuth();
   const { createRestaurant } = useRestaurant();
 
-  // Redirect if already logged in with restaurant
+  // Check user state and redirect accordingly
   useEffect(() => {
     if (!loading && user) {
       // Check if user already has a restaurant
@@ -49,7 +49,11 @@ export default function Register() {
         .single()
         .then(({ data }) => {
           if (data) {
+            // User has restaurant, go to dashboard
             navigate("/dashboard");
+          } else {
+            // User is logged in but no restaurant - go to restaurant step
+            setStep("restaurant");
           }
         });
     }
