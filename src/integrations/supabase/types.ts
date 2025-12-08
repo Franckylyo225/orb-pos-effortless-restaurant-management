@@ -283,6 +283,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          phone: string | null
           restaurant_id: string | null
           updated_at: string
         }
@@ -292,6 +293,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          phone?: string | null
           restaurant_id?: string | null
           updated_at?: string
         }
@@ -301,6 +303,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          phone?: string | null
           restaurant_id?: string | null
           updated_at?: string
         }
