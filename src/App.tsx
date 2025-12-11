@@ -24,6 +24,7 @@ import Onboarding from "./pages/Onboarding";
 import OrderHistory from "./pages/OrderHistory";
 import Reports from "./pages/Reports";
 import Team from "./pages/Team";
+import PublicMenu from "./pages/PublicMenu";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* Public Menu Route - No auth required */}
+            <Route path="/menu/:restaurantId" element={<PublicMenu />} />
+            
             <Route path="/" element={<Index />} />
             <Route path="/features" element={<FeaturesPage />} />
             <Route path="/pricing" element={<PricingPage />} />
