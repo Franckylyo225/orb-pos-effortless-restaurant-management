@@ -1,78 +1,73 @@
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
   ShoppingCart,
   Users,
   AlertTriangle,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { formatDistanceToNow } from "date-fns";
+import { fr } from "date-fns/locale";
 
-const stats = [
-  {
-    label: "Ventes du jour",
-    value: "245 000",
-    unit: "CFA",
-    change: "+12%",
-    trend: "up",
-    icon: DollarSign,
-  },
-  {
-    label: "Commandes",
-    value: "47",
-    unit: "",
-    change: "+8%",
-    trend: "up",
-    icon: ShoppingCart,
-  },
-  {
-    label: "Clients servis",
-    value: "132",
-    unit: "",
-    change: "-3%",
-    trend: "down",
-    icon: Users,
-  },
-  {
-    label: "Ticket moyen",
-    value: "18 500",
-    unit: "CFA",
-    change: "+5%",
-    trend: "up",
-    icon: TrendingUp,
-  },
-];
-
-const recentOrders = [
-  { id: "#1247", table: "Table 5", items: 4, total: "32 500", status: "En cuisine", time: "Il y a 5 min" },
-  { id: "#1246", table: "Table 12", items: 2, total: "18 000", status: "Servi", time: "Il y a 12 min" },
-  { id: "#1245", table: "Table 3", items: 6, total: "54 200", status: "Payé", time: "Il y a 18 min" },
-  { id: "#1244", table: "Comptoir", items: 1, total: "8 500", status: "Payé", time: "Il y a 25 min" },
-];
-
-const stockAlerts = [
-  { product: "Huile de palme", current: 2, unit: "L", threshold: 5 },
-  { product: "Poulet", current: 3, unit: "kg", threshold: 10 },
-  { product: "Riz", current: 5, unit: "kg", threshold: 15 },
-];
-
-const topProducts = [
-  { name: "Poulet braisé", sales: 45, revenue: "292 500" },
-  { name: "Attieke poisson", sales: 38, revenue: "228 000" },
-  { name: "Alloco", sales: 32, revenue: "96 000" },
-  { name: "Jus de bissap", sales: 28, revenue: "42 000" },
-];
+const statusLabels: Record<string, { label: string; className: string }> = {
+  pending: { label: "En attente", className: "bg-muted text-muted-foreground" },
+  in_kitchen: { label: "En cuisine", className: "bg-warning/20 text-warning" },
+  ready: { label: "Prêt", className: "bg-primary/20 text-primary" },
+  served: { label: "Servi", className: "bg-primary/20 text-primary" },
+  paid: { label: "Payé", className: "bg-success/20 text-success" },
+  cancelled: { label: "Annulé", className: "bg-destructive/20 text-destructive" },
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile, restaurant } = useRestaurant();
+  const { stats, recentOrders, stockAlerts, topProducts, loading } = useDashboardStats();
 
   const displayName = profile?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "Utilisateur";
+
+  const statsCards = [
+    {
+      label: "Ventes du jour",
+      value: stats.todayRevenue.toLocaleString(),
+      unit: "CFA",
+      icon: DollarSign,
+    },
+    {
+      label: "Commandes",
+      value: stats.todayOrders.toString(),
+      unit: "",
+      icon: ShoppingCart,
+    },
+    {
+      label: "Clients servis",
+      value: stats.todayCustomers.toString(),
+      unit: "",
+      icon: Users,
+    },
+    {
+      label: "Ticket moyen",
+      value: stats.averageTicket.toLocaleString(),
+      unit: "CFA",
+      icon: TrendingUp,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -97,7 +92,7 @@ export default function Dashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {stats.map((stat) => (
+          {statsCards.map((stat) => (
             <div
               key={stat.label}
               className="stat-card hover:shadow-medium transition-all duration-300"
@@ -105,18 +100,6 @@ export default function Dashboard() {
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                   <stat.icon size={24} />
-                </div>
-                <div
-                  className={`flex items-center gap-1 text-sm font-medium ${
-                    stat.trend === "up" ? "text-success" : "text-destructive"
-                  }`}
-                >
-                  {stat.trend === "up" ? (
-                    <TrendingUp size={16} />
-                  ) : (
-                    <TrendingDown size={16} />
-                  )}
-                  {stat.change}
                 </div>
               </div>
               <p className="text-2xl md:text-3xl font-bold">
@@ -141,46 +124,52 @@ export default function Dashboard() {
                 Commandes récentes
               </h2>
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/dashboard/orders" className="gap-1">
+                <Link to="/dashboard/pos" className="gap-1">
                   Voir tout <ArrowRight size={16} />
                 </Link>
               </Button>
             </div>
             <div className="divide-y divide-border">
-              {recentOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center font-medium text-sm">
-                      {order.table.replace("Table ", "T")}
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {order.id} — {order.table}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.items} articles • {order.time}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{order.total} CFA</p>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        order.status === "En cuisine"
-                          ? "bg-warning/20 text-warning"
-                          : order.status === "Servi"
-                          ? "bg-primary/20 text-primary"
-                          : "bg-success/20 text-success"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </div>
+              {recentOrders.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <ShoppingCart className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>Aucune commande aujourd'hui</p>
                 </div>
-              ))}
+              ) : (
+                recentOrders.map((order) => {
+                  const statusInfo = statusLabels[order.status] || statusLabels.pending;
+                  return (
+                    <div
+                      key={order.id}
+                      className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center font-medium text-sm">
+                          {order.table_name.replace("Table ", "T").slice(0, 3)}
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            #{order.order_number} — {order.table_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {order.items_count} articles •{" "}
+                            {formatDistanceToNow(new Date(order.created_at), {
+                              addSuffix: true,
+                              locale: fr,
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{order.total.toLocaleString()} CFA</p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${statusInfo.className}`}>
+                          {statusInfo.label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -195,27 +184,33 @@ export default function Dashboard() {
                 <div>
                   <h2 className="font-display font-semibold">Alertes stock</h2>
                   <p className="text-sm text-muted-foreground">
-                    {stockAlerts.length} produits faibles
+                    {stockAlerts.length} produit(s) faible(s)
                   </p>
                 </div>
               </div>
               <div className="divide-y divide-border">
-                {stockAlerts.map((alert) => (
-                  <div
-                    key={alert.product}
-                    className="p-4 flex items-center justify-between"
-                  >
-                    <div>
-                      <p className="font-medium">{alert.product}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Seuil: {alert.threshold} {alert.unit}
-                      </p>
-                    </div>
-                    <span className="text-destructive font-semibold">
-                      {alert.current} {alert.unit}
-                    </span>
+                {stockAlerts.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">
+                    Aucune alerte stock
                   </div>
-                ))}
+                ) : (
+                  stockAlerts.map((alert) => (
+                    <div
+                      key={alert.id}
+                      className="p-4 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="font-medium">{alert.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Seuil: {alert.min_stock_threshold} {alert.unit}
+                        </p>
+                      </div>
+                      <span className="text-destructive font-semibold">
+                        {alert.current_stock} {alert.unit}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
               <div className="p-4 bg-muted/30">
                 <Button variant="outline" className="w-full" asChild>
@@ -233,25 +228,31 @@ export default function Dashboard() {
                 <p className="text-sm text-muted-foreground">Aujourd'hui</p>
               </div>
               <div className="divide-y divide-border">
-                {topProducts.map((product, index) => (
-                  <div
-                    key={product.name}
-                    className="p-4 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {product.sales} vendus
-                        </p>
-                      </div>
-                    </div>
-                    <span className="font-semibold">{product.revenue}</span>
+                {topProducts.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">
+                    Aucune vente aujourd'hui
                   </div>
-                ))}
+                ) : (
+                  topProducts.map((product, index) => (
+                    <div
+                      key={product.name}
+                      className="p-4 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                          {index + 1}
+                        </span>
+                        <div>
+                          <p className="font-medium">{product.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {product.quantity} vendus
+                          </p>
+                        </div>
+                      </div>
+                      <span className="font-semibold">{product.revenue.toLocaleString()}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
