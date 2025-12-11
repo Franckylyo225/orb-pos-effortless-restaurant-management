@@ -22,6 +22,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useMenu } from "@/hooks/useMenu";
 import { useOrders, OrderItem } from "@/hooks/useOrders";
 import { useOrderNotifications } from "@/hooks/useOrderNotifications";
+import { useRestaurant } from "@/hooks/useRestaurant";
+import { PaymentSuccessModal } from "@/components/pos/PaymentSuccessModal";
 import {
   Select,
   SelectContent,
@@ -34,9 +36,21 @@ interface CartItem extends OrderItem {
   emoji: string;
 }
 
+interface PaymentSuccessData {
+  orderNumber: number;
+  total: number;
+  items: Array<{ name: string; quantity: number; price: number }>;
+  subtotal: number;
+  discountPercent: number;
+  discountAmount: number;
+  paymentMethod: string;
+  tableName?: string;
+}
+
 export default function POS() {
   const { categories, menuItems, loading: menuLoading } = useMenu();
   const { orders, tables, createOrder, updateOrderStatus, processPayment, loading: ordersLoading } = useOrders();
+  const { restaurant } = useRestaurant();
   useOrderNotifications("pos");
   
   // Filter ready orders for payment
@@ -49,6 +63,7 @@ export default function POS() {
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<PaymentSuccessData | null>(null);
   const { toast } = useToast();
 
   const loading = menuLoading || ordersLoading;
@@ -148,6 +163,7 @@ export default function POS() {
     setIsProcessing(true);
 
     let orderId = currentOrderId;
+    let orderNumber = 0;
 
     // Create order if not already created
     if (!orderId) {
@@ -167,10 +183,35 @@ export default function POS() {
         return;
       }
       orderId = order.id;
+      orderNumber = order.order_number;
+    } else {
+      // Get order number from existing order
+      const existingOrder = orders.find((o) => o.id === orderId);
+      orderNumber = existingOrder?.order_number || 0;
     }
 
     // Process payment
     await processPayment(orderId, total, method);
+
+    // Get table name for receipt
+    const selectedTableObj = tables.find((t) => t.id === selectedTable);
+    const tableName = selectedTableObj?.name || (selectedTable === "counter" ? "Comptoir" : undefined);
+
+    // Show success modal with receipt option
+    setPaymentSuccess({
+      orderNumber,
+      total,
+      items: cart.map((item) => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      subtotal,
+      discountPercent: discount,
+      discountAmount,
+      paymentMethod: method,
+      tableName,
+    });
 
     setCart([]);
     setDiscount(0);
@@ -512,6 +553,25 @@ export default function POS() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Payment Success Modal with Receipt */}
+        {paymentSuccess && (
+          <PaymentSuccessModal
+            open={!!paymentSuccess}
+            onClose={() => setPaymentSuccess(null)}
+            orderNumber={paymentSuccess.orderNumber}
+            total={paymentSuccess.total}
+            items={paymentSuccess.items}
+            subtotal={paymentSuccess.subtotal}
+            discountPercent={paymentSuccess.discountPercent}
+            discountAmount={paymentSuccess.discountAmount}
+            paymentMethod={paymentSuccess.paymentMethod}
+            tableName={paymentSuccess.tableName}
+            restaurantName={restaurant?.name || "Restaurant"}
+            restaurantAddress={restaurant?.address || undefined}
+            restaurantPhone={restaurant?.phone || undefined}
+          />
         )}
       </div>
     </DashboardLayout>
