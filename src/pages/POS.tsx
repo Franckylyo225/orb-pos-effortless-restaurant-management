@@ -16,6 +16,7 @@ import {
   Send,
   Loader2,
   CheckCircle,
+  ChevronLeft,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +24,7 @@ import { useMenu } from "@/hooks/useMenu";
 import { useOrders, OrderItem } from "@/hooks/useOrders";
 import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { useMobileMoneyProviders } from "@/hooks/useMobileMoneyProviders";
 import { PaymentSuccessModal } from "@/components/pos/PaymentSuccessModal";
 import {
   Select,
@@ -51,6 +53,7 @@ export default function POS() {
   const { categories, menuItems, loading: menuLoading } = useMenu();
   const { orders, tables, createOrder, updateOrderStatus, processPayment, loading: ordersLoading } = useOrders();
   const { restaurant } = useRestaurant();
+  const { enabledProviders, loading: providersLoading } = useMobileMoneyProviders();
   useOrderNotifications("pos");
   
   // Filter ready orders for payment
@@ -60,6 +63,7 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [showPayment, setShowPayment] = useState(false);
+  const [showMobileMoneyOptions, setShowMobileMoneyOptions] = useState(false);
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
@@ -157,7 +161,7 @@ export default function POS() {
     setIsProcessing(false);
   };
 
-  const handlePayment = async (method: "cash" | "card" | "mobile_money") => {
+  const handlePayment = async (method: "cash" | "card" | "mobile_money", providerName?: string) => {
     if (cart.length === 0 && !currentOrderId) return;
 
     setIsProcessing(true);
@@ -197,6 +201,11 @@ export default function POS() {
     const selectedTableObj = tables.find((t) => t.id === selectedTable);
     const tableName = selectedTableObj?.name || (selectedTable === "counter" ? "Comptoir" : undefined);
 
+    // Build payment method display name
+    const paymentMethodDisplay = method === "mobile_money" && providerName 
+      ? providerName 
+      : method;
+
     // Show success modal with receipt option
     setPaymentSuccess({
       orderNumber,
@@ -209,7 +218,7 @@ export default function POS() {
       subtotal,
       discountPercent: discount,
       discountAmount,
-      paymentMethod: method,
+      paymentMethod: paymentMethodDisplay,
       tableName,
     });
 
@@ -217,6 +226,7 @@ export default function POS() {
     setDiscount(0);
     setSelectedTable("");
     setShowPayment(false);
+    setShowMobileMoneyOptions(false);
     setCurrentOrderId(null);
     setIsProcessing(false);
   };
@@ -496,9 +506,24 @@ export default function POS() {
           <div className="fixed inset-0 z-50 bg-foreground/50 flex items-center justify-center p-4">
             <div className="bg-card rounded-2xl shadow-large w-full max-w-md animate-scale-in">
               <div className="p-6 border-b border-border flex items-center justify-between">
-                <h2 className="font-display font-bold text-xl">Mode de paiement</h2>
+                {showMobileMoneyOptions ? (
+                  <>
+                    <button
+                      onClick={() => setShowMobileMoneyOptions(false)}
+                      className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <h2 className="font-display font-bold text-xl">Choisir Mobile Money</h2>
+                  </>
+                ) : (
+                  <h2 className="font-display font-bold text-xl">Mode de paiement</h2>
+                )}
                 <button
-                  onClick={() => setShowPayment(false)}
+                  onClick={() => {
+                    setShowPayment(false);
+                    setShowMobileMoneyOptions(false);
+                  }}
                   className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
                 >
                   <X size={20} />
@@ -511,45 +536,89 @@ export default function POS() {
                     {total.toLocaleString()} CFA
                   </p>
                 </div>
-                <Button
-                  variant="pos"
-                  className="w-full"
-                  onClick={() => handlePayment("cash")}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <Loader2 size={24} className="mr-3 animate-spin" />
-                  ) : (
-                    <Banknote size={24} className="mr-3" />
-                  )}
-                  Espèces
-                </Button>
-                <Button
-                  variant="pos"
-                  className="w-full"
-                  onClick={() => handlePayment("card")}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <Loader2 size={24} className="mr-3 animate-spin" />
-                  ) : (
-                    <CreditCard size={24} className="mr-3" />
-                  )}
-                  Carte bancaire
-                </Button>
-                <Button
-                  variant="pos"
-                  className="w-full"
-                  onClick={() => handlePayment("mobile_money")}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <Loader2 size={24} className="mr-3 animate-spin" />
-                  ) : (
-                    <Smartphone size={24} className="mr-3" />
-                  )}
-                  Mobile Money
-                </Button>
+
+                {showMobileMoneyOptions ? (
+                  // Mobile Money Provider Selection
+                  <div className="space-y-3">
+                    {enabledProviders.length === 0 ? (
+                      <div className="text-center py-6">
+                        <Smartphone className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground">Aucun fournisseur Mobile Money configuré</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Configurez-les dans Paramètres → Paiements
+                        </p>
+                      </div>
+                    ) : (
+                      enabledProviders.map((provider) => (
+                        <Button
+                          key={provider.id}
+                          variant="pos"
+                          className="w-full justify-start"
+                          onClick={() => handlePayment("mobile_money", provider.name)}
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? (
+                            <Loader2 size={24} className="mr-3 animate-spin" />
+                          ) : (
+                            <Smartphone size={24} className="mr-3" />
+                          )}
+                          {provider.name}
+                        </Button>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  // Main Payment Methods
+                  <>
+                    <Button
+                      variant="pos"
+                      className="w-full"
+                      onClick={() => handlePayment("cash")}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <Loader2 size={24} className="mr-3 animate-spin" />
+                      ) : (
+                        <Banknote size={24} className="mr-3" />
+                      )}
+                      Espèces
+                    </Button>
+                    <Button
+                      variant="pos"
+                      className="w-full"
+                      onClick={() => handlePayment("card")}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <Loader2 size={24} className="mr-3 animate-spin" />
+                      ) : (
+                        <CreditCard size={24} className="mr-3" />
+                      )}
+                      Carte bancaire
+                    </Button>
+                    <Button
+                      variant="pos"
+                      className="w-full"
+                      onClick={() => {
+                        if (enabledProviders.length === 1) {
+                          // If only one provider, pay directly
+                          handlePayment("mobile_money", enabledProviders[0].name);
+                        } else {
+                          // Show provider selection
+                          setShowMobileMoneyOptions(true);
+                        }
+                      }}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <Loader2 size={24} className="mr-3 animate-spin" />
+                      ) : (
+                        <Smartphone size={24} className="mr-3" />
+                      )}
+                      Mobile Money
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
