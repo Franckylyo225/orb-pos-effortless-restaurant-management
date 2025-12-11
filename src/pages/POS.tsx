@@ -14,6 +14,8 @@ import {
   Search,
   Send,
   Loader2,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -32,8 +34,11 @@ interface CartItem extends OrderItem {
 }
 
 export default function POS() {
-  const { categories, menuItems, loading: menuLoading } = useMenu();
-  const { tables, createOrder, updateOrderStatus, processPayment, loading: ordersLoading } = useOrders();
+const { categories, menuItems, loading: menuLoading } = useMenu();
+  const { orders, tables, createOrder, updateOrderStatus, processPayment, loading: ordersLoading } = useOrders();
+  
+  // Filter ready orders for payment
+  const readyOrders = orders.filter((order) => order.status === "ready");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -260,6 +265,49 @@ export default function POS() {
 
         {/* Cart Section */}
         <div className="w-full md:w-96 bg-card border-l border-border flex flex-col">
+          {/* Ready Orders for Payment */}
+          {readyOrders.length > 0 && (
+            <div className="p-4 border-b border-border bg-accent/30">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle className="text-accent-success" size={18} />
+                <h3 className="font-semibold text-sm">Commandes prêtes ({readyOrders.length})</h3>
+              </div>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {readyOrders.map((order) => (
+                  <button
+                    key={order.id}
+                    onClick={() => {
+                      setCurrentOrderId(order.id);
+                      // Load order items into cart for payment
+                      const cartItems: CartItem[] = (order.items || []).map((item) => ({
+                        menu_item_id: item.menu_item_id || undefined,
+                        name: item.name,
+                        price: Number(item.price),
+                        quantity: item.quantity,
+                        emoji: "🍽️",
+                      }));
+                      setCart(cartItems);
+                      setDiscount(Number(order.discount_percent) || 0);
+                      setShowPayment(true);
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-lg bg-card hover:bg-primary/10 border border-border hover:border-primary transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-primary">#{order.order_number}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {order.table?.name || "Comptoir"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{Number(order.total).toLocaleString()} CFA</span>
+                      <CreditCard size={16} className="text-primary" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Cart Header */}
           <div className="p-4 md:p-6 border-b border-border">
             <div className="flex items-center justify-between mb-4">
