@@ -45,6 +45,8 @@ export default function Settings() {
     menu_cover_image: "",
   });
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("");
   
   // Restaurant info state
   const [restaurantInfo, setRestaurantInfo] = useState({
@@ -78,6 +80,8 @@ export default function Settings() {
         email: restaurant.email || "",
         cuisine_type: restaurant.cuisine_type || "",
       });
+      // Load logo URL
+      setLogoUrl(restaurant.logo_url || "");
       // Load menu settings from restaurant data
       setMenuSettings({
         menu_primary_color: (restaurant as any).menu_primary_color || "#ea580c",
@@ -125,7 +129,99 @@ export default function Settings() {
     }
   };
 
-  const handleSaveMenuSettings = async () => {
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !restaurant) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Fichier invalide",
+        description: "Veuillez sélectionner une image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "Le logo ne doit pas dépasser 2 Mo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${restaurant.id}/logo.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('menu-assets')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('menu-assets')
+        .getPublicUrl(fileName);
+
+      // Update state
+      setLogoUrl(publicUrl);
+
+      // Save to database
+      await supabase
+        .from("restaurants")
+        .update({ logo_url: publicUrl })
+        .eq("id", restaurant.id);
+
+      toast({
+        title: "Logo téléchargé",
+        description: "Le logo du restaurant a été mis à jour.",
+      });
+    } catch (error) {
+      console.error("Error uploading logo:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger le logo.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    if (!restaurant) return;
+
+    try {
+      // Remove from database
+      await supabase
+        .from("restaurants")
+        .update({ logo_url: null })
+        .eq("id", restaurant.id);
+
+      setLogoUrl("");
+
+      toast({
+        title: "Logo supprimé",
+        description: "Le logo du restaurant a été retiré.",
+      });
+    } catch (error) {
+      console.error("Error removing logo:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le logo.",
+        variant: "destructive",
+      });
+    }
+  };
+
+
     if (!restaurant) return;
     
     setSavingMenu(true);
@@ -300,7 +396,88 @@ export default function Settings() {
           </TabsList>
 
           {/* General Settings */}
-          <TabsContent value="general">
+          <TabsContent value="general" className="space-y-6">
+            {/* Logo Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Logo du restaurant
+                </CardTitle>
+                <CardDescription>
+                  Ajoutez ou modifiez le logo de votre établissement
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-start gap-6">
+                  {/* Logo Preview */}
+                  <div className="relative">
+                    {logoUrl ? (
+                      <div className="relative group">
+                        <img
+                          src={logoUrl}
+                          alt="Logo du restaurant"
+                          className="w-32 h-32 rounded-xl object-cover border border-border shadow-sm"
+                        />
+                        <div className="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label className="cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleLogoUpload}
+                              className="hidden"
+                              disabled={uploadingLogo}
+                            />
+                            <div className="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors">
+                              <Upload className="h-5 w-5 text-white" />
+                            </div>
+                          </label>
+                          <button
+                            onClick={handleRemoveLogo}
+                            className="p-2 bg-white/20 rounded-lg hover:bg-destructive/80 transition-colors"
+                          >
+                            <Trash2 className="h-5 w-5 text-white" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                          disabled={uploadingLogo}
+                        />
+                        <div className="w-32 h-32 rounded-xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-muted/50 transition-colors">
+                          {uploadingLogo ? (
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                          ) : (
+                            <>
+                              <Upload className="h-8 w-8 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">Ajouter</span>
+                            </>
+                          )}
+                        </div>
+                      </label>
+                    )}
+                  </div>
+                  
+                  {/* Logo Instructions */}
+                  <div className="flex-1 space-y-2">
+                    <h4 className="font-medium">Recommandations</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Format carré recommandé (ex: 512x512 pixels)</li>
+                      <li>• Formats acceptés : JPG, PNG, WebP</li>
+                      <li>• Taille maximale : 2 Mo</li>
+                      <li>• Fond transparent recommandé (PNG)</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Restaurant Info */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
