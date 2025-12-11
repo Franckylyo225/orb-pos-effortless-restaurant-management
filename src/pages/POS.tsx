@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,12 +15,12 @@ import {
   Send,
   Loader2,
   CheckCircle,
-  Clock,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useMenu } from "@/hooks/useMenu";
 import { useOrders, OrderItem } from "@/hooks/useOrders";
+import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 import {
   Select,
   SelectContent,
@@ -34,8 +34,9 @@ interface CartItem extends OrderItem {
 }
 
 export default function POS() {
-const { categories, menuItems, loading: menuLoading } = useMenu();
+  const { categories, menuItems, loading: menuLoading } = useMenu();
   const { orders, tables, createOrder, updateOrderStatus, processPayment, loading: ordersLoading } = useOrders();
+  useOrderNotifications("pos");
   
   // Filter ready orders for payment
   const readyOrders = orders.filter((order) => order.status === "ready");

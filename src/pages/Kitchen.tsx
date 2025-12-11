@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useOrders } from "@/hooks/useOrders";
+import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 
 export default function Kitchen() {
   const { orders, updateOrderStatus, loading } = useOrders();
+  useOrderNotifications("kitchen");
 
   // Filter orders that are in the kitchen
   const kitchenOrders = orders.filter(
