@@ -191,7 +191,18 @@ export function useRestaurant() {
       .single();
 
     if (restaurantError) {
-      return { error: restaurantError };
+      console.error("Restaurant creation error:", restaurantError);
+      let errorMessage = "Impossible de créer le restaurant";
+      
+      if (restaurantError.code === "42501" || restaurantError.message?.includes("row-level security")) {
+        errorMessage = "Erreur de permission: vous n'êtes pas autorisé à créer un restaurant. Veuillez vous reconnecter.";
+      } else if (restaurantError.code === "23505") {
+        errorMessage = "Un restaurant avec ce nom existe déjà.";
+      } else if (restaurantError.message) {
+        errorMessage = `Erreur: ${restaurantError.message}`;
+      }
+      
+      return { error: new Error(errorMessage), details: restaurantError };
     }
 
     // Deactivate all other restaurants for this user
@@ -212,7 +223,10 @@ export function useRestaurant() {
 
     if (assocError) {
       console.error("Error creating restaurant association:", assocError);
-      return { error: assocError };
+      return { 
+        error: new Error(`Erreur lors de l'association au restaurant: ${assocError.message}`),
+        details: assocError 
+      };
     }
 
     // Update profile with restaurant_id (for backward compatibility)
