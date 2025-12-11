@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { TodayStatsBar } from "@/components/dashboard/TodayStatsBar";
 import { Button } from "@/components/ui/button";
 import {
   Minus,
@@ -196,6 +197,11 @@ export default function POS() {
       <div className="h-[calc(100vh-0px)] flex">
         {/* Products Section */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Today Stats */}
+          <div className="p-4 md:px-6 md:pt-6 md:pb-0">
+            <TodayStatsBar />
+          </div>
+
           {/* Search & Categories */}
           <div className="p-4 md:p-6 border-b border-border bg-card space-y-4">
             <div className="relative">
