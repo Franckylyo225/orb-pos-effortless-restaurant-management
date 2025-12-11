@@ -177,18 +177,20 @@ export function useRestaurant() {
       };
     }
 
-    // Create restaurant
-    const { data: newRestaurant, error: restaurantError } = await supabase
+    // Create restaurant - don't use .select() to avoid SELECT policy issues
+    // Generate ID client-side to use immediately
+    const restaurantId = crypto.randomUUID();
+    
+    const { error: restaurantError } = await supabase
       .from("restaurants")
       .insert({
+        id: restaurantId,
         name: restaurantData.name,
         cuisine_type: restaurantData.cuisine_type,
         team_size: restaurantData.team_size,
         address: restaurantData.address,
         logo_url: restaurantData.logo_url,
-      })
-      .select()
-      .single();
+      });
 
     if (restaurantError) {
       console.error("Restaurant creation error:", restaurantError);
@@ -211,12 +213,12 @@ export function useRestaurant() {
       .update({ is_active: false })
       .eq("user_id", user.id);
 
-    // Create user_restaurant association
+    // Create user_restaurant association - this makes the restaurant visible via RLS
     const { error: assocError } = await supabase
       .from("user_restaurants")
       .insert({
         user_id: user.id,
-        restaurant_id: newRestaurant.id,
+        restaurant_id: restaurantId,
         is_owner: true,
         is_active: true,
       });
@@ -232,7 +234,7 @@ export function useRestaurant() {
     // Update profile with restaurant_id (for backward compatibility)
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({ restaurant_id: newRestaurant.id })
+      .update({ restaurant_id: restaurantId })
       .eq("id", user.id);
 
     if (profileError) {
@@ -243,17 +245,17 @@ export function useRestaurant() {
     const { error: roleError } = await supabase.from("user_roles").insert({
       user_id: user.id,
       role: "admin" as const,
-      restaurant_id: newRestaurant.id,
+      restaurant_id: restaurantId,
     });
 
     if (roleError) {
       console.error("Error adding admin role:", roleError);
     }
 
-    // Refresh data
+    // Refresh data to get the complete restaurant object
     await fetchData();
 
-    return { error: null, restaurant: newRestaurant };
+    return { error: null, restaurant: { id: restaurantId, name: restaurantData.name } };
   };
 
   const switchRestaurant = async (restaurantId: string) => {
