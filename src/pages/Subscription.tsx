@@ -4,6 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { 
+  useSubscriptionFeatures, 
+  FEATURES, 
+  PLAN_LIMITS,
+  SubscriptionPlan 
+} from "@/hooks/useSubscriptionFeatures";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -13,16 +19,20 @@ import {
   Zap, 
   Building2,
   Loader2,
-  Star
+  Star,
+  Users,
+  Store,
+  LayoutGrid
 } from "lucide-react";
 
 interface Plan {
-  id: string;
+  id: SubscriptionPlan;
   name: string;
   description: string;
   price: number;
   period: string;
   features: string[];
+  limits: { label: string; value: string | number }[];
   popular?: boolean;
   icon: React.ReactNode;
 }
@@ -32,14 +42,18 @@ const plans: Plan[] = [
     id: "basic",
     name: "Basic",
     description: "Pour démarrer votre activité",
-    price: 9900,
+    price: 19000,
     period: "FCFA/mois",
     icon: <Building2 className="h-6 w-6" />,
+    limits: [
+      { label: "Membres d'équipe", value: PLAN_LIMITS.basic.maxTeamMembers },
+      { label: "Restaurants", value: PLAN_LIMITS.basic.maxRestaurants },
+      { label: "Tables", value: PLAN_LIMITS.basic.maxTables },
+    ],
     features: [
-      "1 utilisateur",
       "Gestion des commandes",
       "Menu illimité",
-      "5 tables maximum",
+      "Écran cuisine",
       "Rapports basiques",
       "Support par email",
     ],
@@ -48,33 +62,41 @@ const plans: Plan[] = [
     id: "pro",
     name: "Pro",
     description: "Pour les restaurants en croissance",
-    price: 24900,
+    price: 49000,
     period: "FCFA/mois",
     popular: true,
     icon: <Zap className="h-6 w-6" />,
+    limits: [
+      { label: "Membres d'équipe", value: PLAN_LIMITS.pro.maxTeamMembers },
+      { label: "Restaurants", value: PLAN_LIMITS.pro.maxRestaurants },
+      { label: "Tables", value: "Illimité" },
+    ],
     features: [
-      "5 utilisateurs",
-      "Gestion des commandes",
-      "Menu illimité",
-      "Tables illimitées",
+      "Toutes les fonctionnalités Basic",
       "Gestion du stock",
       "Rapports avancés",
-      "Support prioritaire",
       "Exports PDF/Excel",
+      "Commandes QR",
+      "Reçus personnalisés",
+      "Support prioritaire",
     ],
   },
   {
     id: "premium",
     name: "Premium",
     description: "Solution complète pour les professionnels",
-    price: 49900,
+    price: 129000,
     period: "FCFA/mois",
     icon: <Crown className="h-6 w-6" />,
+    limits: [
+      { label: "Membres d'équipe", value: "Illimité" },
+      { label: "Restaurants", value: "Illimité" },
+      { label: "Tables", value: "Illimité" },
+    ],
     features: [
-      "Utilisateurs illimités",
       "Toutes les fonctionnalités Pro",
       "Multi-établissements",
-      "API personnalisée",
+      "Accès API",
       "Intégrations tierces",
       "Support 24/7",
       "Formation dédiée",
@@ -206,6 +228,16 @@ export default function Subscription() {
                       {plan.price.toLocaleString()}
                     </span>
                     <span className="text-muted-foreground ml-1">{plan.period}</span>
+                  </div>
+
+                  {/* Limits */}
+                  <div className="space-y-2 p-3 rounded-lg bg-muted/50">
+                    {plan.limits.map((limit, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{limit.label}</span>
+                        <span className="font-semibold">{limit.value}</span>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Features */}

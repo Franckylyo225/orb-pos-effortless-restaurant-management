@@ -35,8 +35,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { FeatureGate } from "@/components/subscription";
+import { useSubscriptionFeatures } from "@/hooks/useSubscriptionFeatures";
 
-export default function Stock() {
+function StockContent() {
   const { suppliers, products, lowStockProducts, loading, addSupplier, addProduct, addStockMovement, deleteProduct } = useStock();
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddProduct, setShowAddProduct] = useState(false);
@@ -493,5 +495,13 @@ export default function Stock() {
         </Dialog>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function Stock() {
+  return (
+    <FeatureGate feature="stock_management">
+      <StockContent />
+    </FeatureGate>
   );
 }
