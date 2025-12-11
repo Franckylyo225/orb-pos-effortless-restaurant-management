@@ -552,118 +552,138 @@ export default function Settings() {
           </TabsContent>
 
           {/* Menu QR Settings */}
-          <TabsContent value="menu-qr">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <QrCode className="h-5 w-5" />
+          <TabsContent value="menu-qr" className="space-y-6">
+            <Tabs defaultValue="qr-code" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="qr-code" className="gap-2">
+                  <QrCode size={16} />
                   Menu QR Code
-                </CardTitle>
-                <CardDescription>
-                  Partagez votre menu en ligne avec vos clients
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="rounded-xl border border-border bg-muted/30 p-6">
-                  <div className="flex flex-col md:flex-row gap-6">
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-2">Lien de votre menu</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Partagez ce lien avec vos clients ou générez un QR code à afficher dans votre restaurant.
-                      </p>
-                      <div className="flex gap-2">
-                        <Input
-                          readOnly
-                          value={`${window.location.origin}/menu/${restaurant?.id}`}
-                          className="flex-1 font-mono text-sm"
-                        />
-                        <Button
-                          variant="outline"
-                          size="icon"
+                </TabsTrigger>
+                <TabsTrigger value="appearance" className="gap-2">
+                  <ImageIcon size={16} />
+                  Personnalisation
+                </TabsTrigger>
+              </TabsList>
+
+              {/* QR Code Tab */}
+              <TabsContent value="qr-code" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <QrCode className="h-5 w-5" />
+                      Menu QR Code
+                    </CardTitle>
+                    <CardDescription>
+                      Partagez votre menu en ligne avec vos clients
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="rounded-xl border border-border bg-muted/30 p-6">
+                      <div className="flex flex-col md:flex-row gap-6">
+                        <div className="flex-1">
+                          <h3 className="font-semibold mb-2">Lien de votre menu</h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Partagez ce lien avec vos clients ou générez un QR code à afficher dans votre restaurant.
+                          </p>
+                          <div className="flex gap-2">
+                            <Input
+                              readOnly
+                              value={`${window.location.origin}/menu/${restaurant?.id}`}
+                              className="flex-1 font-mono text-sm"
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`${window.location.origin}/menu/${restaurant?.id}`);
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                                toast({
+                                  title: "Lien copié !",
+                                  description: "Le lien du menu a été copié dans le presse-papier.",
+                                });
+                              }}
+                            >
+                              {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => window.open(`/menu/${restaurant?.id}`, "_blank")}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="rounded-xl border border-border p-6">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <QrCode className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">QR Code à imprimer</h4>
+                            <p className="text-sm text-muted-foreground">Affichez le QR code sur vos tables</p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
                           onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/menu/${restaurant?.id}`);
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
-                            toast({
-                              title: "Lien copié !",
-                              description: "Le lien du menu a été copié dans le presse-papier.",
-                            });
+                            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`${window.location.origin}/menu/${restaurant?.id}`)}`;
+                            window.open(qrUrl, "_blank");
                           }}
                         >
-                          {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                          Télécharger le QR Code
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => window.open(`/menu/${restaurant?.id}`, "_blank")}
+                      </div>
+
+                      <div className="rounded-xl border border-border p-6">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                            <span className="text-2xl">📱</span>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Partager via WhatsApp</h4>
+                            <p className="text-sm text-muted-foreground">Envoyez le menu à vos clients</p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => {
+                            const message = `Découvrez notre menu : ${window.location.origin}/menu/${restaurant?.id}`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
+                          }}
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          Partager sur WhatsApp
                         </Button>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-border p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <QrCode className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">QR Code à imprimer</h4>
-                        <p className="text-sm text-muted-foreground">Affichez le QR code sur vos tables</p>
-                      </div>
+                    <div className="bg-muted/50 rounded-xl p-4">
+                      <h4 className="font-medium mb-2">💡 Conseils</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Imprimez le QR code et placez-le sur chaque table de votre restaurant</li>
+                        <li>• Ajoutez le lien à votre page Google My Business et réseaux sociaux</li>
+                        <li>• Le menu se met à jour automatiquement quand vous modifiez vos plats</li>
+                      </ul>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => {
-                        // Generate QR code using a free API
-                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`${window.location.origin}/menu/${restaurant?.id}`)}`;
-                        window.open(qrUrl, "_blank");
-                      }}
-                    >
-                      Télécharger le QR Code
-                    </Button>
-                  </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-                  <div className="rounded-xl border border-border p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
-                        <span className="text-2xl">📱</span>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold">Partager via WhatsApp</h4>
-                        <p className="text-sm text-muted-foreground">Envoyez le menu à vos clients</p>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => {
-                        const message = `Découvrez notre menu : ${window.location.origin}/menu/${restaurant?.id}`;
-                        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
-                      }}
-                    >
-                      Partager sur WhatsApp
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="bg-muted/50 rounded-xl p-4">
-                  <h4 className="font-medium mb-2">💡 Conseils</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Imprimez le QR code et placez-le sur chaque table de votre restaurant</li>
-                    <li>• Ajoutez le lien à votre page Google My Business et réseaux sociaux</li>
-                    <li>• Le menu se met à jour automatiquement quand vous modifiez vos plats</li>
-                  </ul>
-                </div>
-
-                {/* Customization Section */}
-                <Card className="border-dashed">
+              {/* Appearance Customization Tab */}
+              <TabsContent value="appearance" className="mt-6">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Personnalisation de l'apparence</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <ImageIcon className="h-5 w-5" />
+                      Personnalisation de l'apparence
+                    </CardTitle>
                     <CardDescription>
                       Adaptez le design du menu à votre marque
                     </CardDescription>
@@ -855,8 +875,8 @@ export default function Settings() {
                     </Button>
                   </CardContent>
                 </Card>
-              </CardContent>
-            </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* Payment Settings */}
