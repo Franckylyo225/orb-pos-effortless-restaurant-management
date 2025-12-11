@@ -14,6 +14,7 @@ import ContactPage from "./pages/ContactPage";
 import UseCasesPage from "./pages/UseCasesPage";
 import Dashboard from "./pages/Dashboard";
 import POS from "./pages/POS";
+import Kitchen from "./pages/Kitchen";
 import Tables from "./pages/Tables";
 import Menu from "./pages/Menu";
 import Stock from "./pages/Stock";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard/pos" element={<POS />} />
+            <Route path="/dashboard/kitchen" element={<Kitchen />} />
             <Route path="/dashboard/tables" element={<Tables />} />
             <Route path="/dashboard/menu" element={<Menu />} />
             <Route path="/dashboard/stock" element={<Stock />} />
