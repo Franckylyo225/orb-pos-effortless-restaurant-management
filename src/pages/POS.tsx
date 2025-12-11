@@ -123,7 +123,7 @@ export default function POS() {
         price: item.price,
         quantity: item.quantity,
       })),
-      selectedTable || null,
+      selectedTable && selectedTable !== "counter" ? selectedTable : null,
       discount
     );
 
@@ -157,7 +157,7 @@ export default function POS() {
           price: item.price,
           quantity: item.quantity,
         })),
-        selectedTable || null,
+        selectedTable && selectedTable !== "counter" ? selectedTable : null,
         discount
       );
 
