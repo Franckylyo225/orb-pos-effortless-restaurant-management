@@ -73,10 +73,14 @@ export function useOrders() {
       setTables((tablesData as Table[]) || []);
     }
 
-    // Fetch active orders
+    // Fetch active orders with items and table info
     const { data: ordersData, error: ordersError } = await supabase
       .from("orders")
-      .select("*")
+      .select(`
+        *,
+        order_items (*),
+        tables (*)
+      `)
       .eq("restaurant_id", restaurant.id)
       .not("status", "eq", "paid")
       .not("status", "eq", "cancelled")
@@ -85,7 +89,13 @@ export function useOrders() {
     if (ordersError) {
       console.error("Error fetching orders:", ordersError);
     } else {
-      setOrders((ordersData as unknown as Order[]) || []);
+      // Transform data to match our interface
+      const transformedOrders = (ordersData || []).map((order: any) => ({
+        ...order,
+        items: order.order_items || [],
+        table: order.tables || null,
+      }));
+      setOrders(transformedOrders as Order[]);
     }
 
     setLoading(false);
