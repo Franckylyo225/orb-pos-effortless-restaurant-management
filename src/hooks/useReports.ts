@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/hooks/useRestaurant";
-import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, format } from "date-fns";
+import { startOfDay, endOfDay, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek, format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export interface DateRange {
   from: Date;
@@ -40,6 +41,12 @@ export interface DailySales {
   orders: number;
 }
 
+export interface WeeklyComparison {
+  dayName: string;
+  currentWeek: number;
+  previousWeek: number;
+}
+
 export function useReports(dateRange: DateRange) {
   const { restaurant } = useRestaurant();
   const [loading, setLoading] = useState(true);
@@ -51,6 +58,7 @@ export function useReports(dateRange: DateRange) {
     totalDiscount: 0,
     netRevenue: 0,
   });
+  const [weeklyComparison, setWeeklyComparison] = useState<WeeklyComparison[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSummary[]>([]);
   const [productSales, setProductSales] = useState<ProductSales[]>([]);
   const [dailySales, setDailySales] = useState<DailySales[]>([]);
@@ -202,6 +210,51 @@ export function useReports(dateRange: DateRange) {
     }
 
     setDailySales(dailySalesArray);
+
+    // Fetch weekly comparison data
+    const today = new Date();
+    const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const currentWeekEnd = endOfWeek(today, { weekStartsOn: 1 });
+    const previousWeekStart = subDays(currentWeekStart, 7);
+    const previousWeekEnd = subDays(currentWeekEnd, 7);
+
+    const { data: currentWeekOrders } = await supabase
+      .from("orders")
+      .select("total, created_at")
+      .eq("restaurant_id", restaurant.id)
+      .eq("status", "paid")
+      .gte("created_at", currentWeekStart.toISOString())
+      .lte("created_at", currentWeekEnd.toISOString());
+
+    const { data: previousWeekOrders } = await supabase
+      .from("orders")
+      .select("total, created_at")
+      .eq("restaurant_id", restaurant.id)
+      .eq("status", "paid")
+      .gte("created_at", previousWeekStart.toISOString())
+      .lte("created_at", previousWeekEnd.toISOString());
+
+    const dayNames = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+    const weeklyData: WeeklyComparison[] = dayNames.map((dayName, index) => {
+      const currentDayOrders = (currentWeekOrders || []).filter((o) => {
+        const orderDay = new Date(o.created_at).getDay();
+        const adjustedDay = orderDay === 0 ? 6 : orderDay - 1;
+        return adjustedDay === index;
+      });
+      const previousDayOrders = (previousWeekOrders || []).filter((o) => {
+        const orderDay = new Date(o.created_at).getDay();
+        const adjustedDay = orderDay === 0 ? 6 : orderDay - 1;
+        return adjustedDay === index;
+      });
+
+      return {
+        dayName,
+        currentWeek: currentDayOrders.reduce((sum, o) => sum + Number(o.total || 0), 0),
+        previousWeek: previousDayOrders.reduce((sum, o) => sum + Number(o.total || 0), 0),
+      };
+    });
+
+    setWeeklyComparison(weeklyData);
     setLoading(false);
   };
 
@@ -215,6 +268,7 @@ export function useReports(dateRange: DateRange) {
     paymentMethods,
     productSales,
     dailySales,
+    weeklyComparison,
     refetch: fetchReports,
   };
 }

@@ -24,6 +24,8 @@ import {
   Pie,
   Cell,
   Legend,
+  LineChart,
+  Line,
 } from "recharts";
 import {
   CalendarIcon,
@@ -53,7 +55,7 @@ export default function Reports() {
   const [dateRange, setDateRange] = useState<DateRange>(presetRanges[2].range); // 7 derniers jours
   const [selectedPreset, setSelectedPreset] = useState("7 derniers jours");
   const { restaurant } = useRestaurant();
-  const { loading, revenueStats, paymentMethods, productSales, dailySales } = useReports(dateRange);
+  const { loading, revenueStats, paymentMethods, productSales, dailySales, weeklyComparison } = useReports(dateRange);
 
   const handlePresetChange = (value: string) => {
     setSelectedPreset(value);
@@ -374,6 +376,71 @@ export default function Reports() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Weekly Comparison Chart */}
+        <div className="bg-card rounded-2xl border border-border/50 shadow-soft p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-display font-semibold text-lg">Comparaison hebdomadaire</h2>
+              <p className="text-sm text-muted-foreground">
+                Semaine actuelle vs semaine précédente
+              </p>
+            </div>
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-primary" />
+                <span className="text-muted-foreground">Cette semaine</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
+                <span className="text-muted-foreground">Semaine précédente</span>
+              </div>
+            </div>
+          </div>
+          <div className="h-[300px]">
+            {weeklyComparison.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyComparison} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    dataKey="dayName"
+                    className="text-muted-foreground text-xs"
+                  />
+                  <YAxis
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    className="text-muted-foreground text-xs"
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                          <p className="font-medium mb-2">{label}</p>
+                          <div className="space-y-1">
+                            <p className="text-primary font-semibold flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-primary" />
+                              Cette semaine: {payload[0]?.value?.toLocaleString()} CFA
+                            </p>
+                            <p className="text-muted-foreground flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
+                              Semaine précédente: {payload[1]?.value?.toLocaleString()} CFA
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="currentWeek" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Cette semaine" />
+                  <Bar dataKey="previousWeek" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} name="Semaine précédente" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Aucune donnée disponible
+              </div>
+            )}
           </div>
         </div>
 
