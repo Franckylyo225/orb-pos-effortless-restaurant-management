@@ -21,7 +21,10 @@ import {
   QrCode,
   Copy,
   ExternalLink,
-  Check
+  Check,
+  Upload,
+  ImageIcon,
+  Trash2
 } from "lucide-react";
 
 export default function Settings() {
@@ -39,7 +42,9 @@ export default function Settings() {
     menu_show_address: true,
     menu_show_phone: true,
     menu_welcome_message: "",
+    menu_cover_image: "",
   });
+  const [uploadingCover, setUploadingCover] = useState(false);
   
   // Restaurant info state
   const [restaurantInfo, setRestaurantInfo] = useState({
@@ -81,6 +86,7 @@ export default function Settings() {
         menu_show_address: (restaurant as any).menu_show_address ?? true,
         menu_show_phone: (restaurant as any).menu_show_phone ?? true,
         menu_welcome_message: (restaurant as any).menu_welcome_message || "",
+        menu_cover_image: (restaurant as any).menu_cover_image || "",
       });
     }
   });
@@ -133,6 +139,7 @@ export default function Settings() {
           menu_show_address: menuSettings.menu_show_address,
           menu_show_phone: menuSettings.menu_show_phone,
           menu_welcome_message: menuSettings.menu_welcome_message || null,
+          menu_cover_image: menuSettings.menu_cover_image || null,
         })
         .eq("id", restaurant.id);
 
@@ -151,6 +158,98 @@ export default function Settings() {
       });
     } finally {
       setSavingMenu(false);
+    }
+  };
+
+  const handleCoverImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !restaurant) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Fichier invalide",
+        description: "Veuillez sélectionner une image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "L'image ne doit pas dépasser 5 Mo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploadingCover(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${restaurant.id}/cover.${fileExt}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('menu-assets')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('menu-assets')
+        .getPublicUrl(fileName);
+
+      // Update state
+      setMenuSettings({ ...menuSettings, menu_cover_image: publicUrl });
+
+      // Save to database
+      await supabase
+        .from("restaurants")
+        .update({ menu_cover_image: publicUrl })
+        .eq("id", restaurant.id);
+
+      toast({
+        title: "Image téléchargée",
+        description: "L'image de couverture a été mise à jour.",
+      });
+    } catch (error) {
+      console.error("Error uploading cover:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger l'image.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const handleRemoveCoverImage = async () => {
+    if (!restaurant) return;
+
+    try {
+      // Remove from database
+      await supabase
+        .from("restaurants")
+        .update({ menu_cover_image: null })
+        .eq("id", restaurant.id);
+
+      setMenuSettings({ ...menuSettings, menu_cover_image: "" });
+
+      toast({
+        title: "Image supprimée",
+        description: "L'image de couverture a été retirée.",
+      });
+    } catch (error) {
+      console.error("Error removing cover:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'image.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -393,6 +492,74 @@ export default function Settings() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Cover Image Upload */}
+                    <div className="space-y-3">
+                      <Label>Image de couverture</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Une belle image en haut de votre menu (recommandé: 1200x400px)
+                      </p>
+                      
+                      {menuSettings.menu_cover_image ? (
+                        <div className="relative rounded-xl overflow-hidden border border-border">
+                          <img
+                            src={menuSettings.menu_cover_image}
+                            alt="Cover"
+                            className="w-full h-40 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleCoverImageUpload}
+                                className="hidden"
+                              />
+                              <Button variant="secondary" size="sm" asChild>
+                                <span>
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Changer
+                                </span>
+                              </Button>
+                            </label>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={handleRemoveCoverImage}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Supprimer
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer block">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCoverImageUpload}
+                            className="hidden"
+                            disabled={uploadingCover}
+                          />
+                          <div className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 hover:bg-muted/50 transition-colors">
+                            {uploadingCover ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                <span className="text-sm text-muted-foreground">Téléchargement...</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                                <span className="text-sm font-medium">Cliquez pour ajouter une image</span>
+                                <span className="text-xs text-muted-foreground">PNG, JPG jusqu'à 5 Mo</span>
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      )}
+                    </div>
+
                     {/* Color Picker */}
                     <div className="space-y-3">
                       <Label>Couleur principale</Label>
