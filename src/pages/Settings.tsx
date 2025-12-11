@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { MobileMoneyProvidersCard } from "@/components/settings/MobileMoneyProvidersCard";
 import { 
   Building2, 
   CreditCard, 
@@ -880,7 +881,7 @@ export default function Settings() {
           </TabsContent>
 
           {/* Payment Settings */}
-          <TabsContent value="payments">
+          <TabsContent value="payments" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -948,6 +949,9 @@ export default function Settings() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Mobile Money Providers Card */}
+            <MobileMoneyProvidersCard />
           </TabsContent>
 
           {/* Tax Settings */}

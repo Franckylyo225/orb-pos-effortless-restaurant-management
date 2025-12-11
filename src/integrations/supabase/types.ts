@@ -115,6 +115,44 @@ export type Database = {
           },
         ]
       }
+      mobile_money_providers: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          name: string
+          restaurant_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          name: string
+          restaurant_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          name?: string
+          restaurant_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mobile_money_providers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
