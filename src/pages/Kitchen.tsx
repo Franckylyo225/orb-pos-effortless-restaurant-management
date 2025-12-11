@@ -97,7 +97,7 @@ export default function Kitchen() {
                 <CardContent className="pt-4 space-y-4">
                   {/* Order Items */}
                   <div className="space-y-2">
-                    {order.items.map((item, index) => (
+                    {(order.items || []).map((item, index) => (
                       <div
                         key={index}
                         className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
