@@ -13,6 +13,7 @@ import {
   ChevronRight,
   CreditCard,
   ChefHat,
+  History,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -26,6 +27,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Vue d'ensemble", href: "/dashboard" },
   { icon: ShoppingBag, label: "Caisse (POS)", href: "/dashboard/pos" },
   { icon: ChefHat, label: "Cuisine", href: "/dashboard/kitchen" },
+  { icon: History, label: "Historique", href: "/dashboard/orders" },
   { icon: LayoutGrid, label: "Tables", href: "/dashboard/tables" },
   { icon: UtensilsCrossed, label: "Menu", href: "/dashboard/menu" },
   { icon: Package, label: "Stock", href: "/dashboard/stock" },
