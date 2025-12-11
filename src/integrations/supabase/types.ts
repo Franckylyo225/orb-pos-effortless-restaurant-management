@@ -325,6 +325,12 @@ export type Database = {
           email: string | null
           id: string
           logo_url: string | null
+          menu_bg_style: string | null
+          menu_primary_color: string | null
+          menu_show_address: boolean | null
+          menu_show_logo: boolean | null
+          menu_show_phone: boolean | null
+          menu_welcome_message: string | null
           name: string
           phone: string | null
           subscription_plan: string | null
@@ -338,6 +344,12 @@ export type Database = {
           email?: string | null
           id?: string
           logo_url?: string | null
+          menu_bg_style?: string | null
+          menu_primary_color?: string | null
+          menu_show_address?: boolean | null
+          menu_show_logo?: boolean | null
+          menu_show_phone?: boolean | null
+          menu_welcome_message?: string | null
           name: string
           phone?: string | null
           subscription_plan?: string | null
@@ -351,6 +363,12 @@ export type Database = {
           email?: string | null
           id?: string
           logo_url?: string | null
+          menu_bg_style?: string | null
+          menu_primary_color?: string | null
+          menu_show_address?: boolean | null
+          menu_show_logo?: boolean | null
+          menu_show_phone?: boolean | null
+          menu_welcome_message?: string | null
           name?: string
           phone?: string | null
           subscription_plan?: string | null
