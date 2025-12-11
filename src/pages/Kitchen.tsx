@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useOrders } from "@/hooks/useOrders";
 import { useOrderNotifications } from "@/hooks/useOrderNotifications";
+import { TodayStatsBar } from "@/components/dashboard/TodayStatsBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,9 @@ export default function Kitchen() {
   return (
     <DashboardLayout>
       <div className="p-4 md:p-6 space-y-6">
+        {/* Today Stats */}
+        <TodayStatsBar />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
