@@ -326,6 +326,7 @@ export type Database = {
           id: string
           logo_url: string | null
           menu_bg_style: string | null
+          menu_cover_image: string | null
           menu_primary_color: string | null
           menu_show_address: boolean | null
           menu_show_logo: boolean | null
@@ -345,6 +346,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           menu_bg_style?: string | null
+          menu_cover_image?: string | null
           menu_primary_color?: string | null
           menu_show_address?: boolean | null
           menu_show_logo?: boolean | null
@@ -364,6 +366,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           menu_bg_style?: string | null
+          menu_cover_image?: string | null
           menu_primary_color?: string | null
           menu_show_address?: boolean | null
           menu_show_logo?: boolean | null

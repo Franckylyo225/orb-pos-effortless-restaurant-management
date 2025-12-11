@@ -28,6 +28,7 @@ interface Restaurant {
   menu_show_address: boolean | null;
   menu_show_phone: boolean | null;
   menu_welcome_message: string | null;
+  menu_cover_image: string | null;
 }
 
 interface Category {
@@ -69,7 +70,7 @@ export default function PublicMenu() {
         // Fetch restaurant info (public access needed)
         const { data: restaurantData, error: restaurantError } = await supabase
           .from("restaurants")
-          .select("id, name, address, phone, email, logo_url, cuisine_type, menu_primary_color, menu_bg_style, menu_show_logo, menu_show_address, menu_show_phone, menu_welcome_message")
+          .select("id, name, address, phone, email, logo_url, cuisine_type, menu_primary_color, menu_bg_style, menu_show_logo, menu_show_address, menu_show_phone, menu_welcome_message, menu_cover_image")
           .eq("id", restaurantId)
           .maybeSingle();
 
@@ -169,6 +170,7 @@ export default function PublicMenu() {
   const showAddress = restaurant.menu_show_address ?? true;
   const showPhone = restaurant.menu_show_phone ?? true;
   const welcomeMessage = restaurant.menu_welcome_message;
+  const coverImage = restaurant.menu_cover_image;
 
   // Background classes based on style
   const bgClasses = {
@@ -191,8 +193,50 @@ export default function PublicMenu() {
 
   return (
     <div className={`min-h-screen ${bgClasses}`} style={{ "--menu-primary": primaryColor } as React.CSSProperties}>
-      {/* Header */}
-      <header className={`${cardClasses} border-b sticky top-0 z-50`}>
+      {/* Cover Image */}
+      {coverImage && (
+        <div className="relative w-full h-48 md:h-64 overflow-hidden">
+          <img
+            src={coverImage}
+            alt="Cover"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
+            <div className="max-w-4xl mx-auto flex items-end gap-4">
+              {showLogo && (restaurant.logo_url ? (
+                <img
+                  src={restaurant.logo_url}
+                  alt={restaurant.name}
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-xl object-cover border-2 border-white shadow-lg"
+                />
+              ) : (
+                <div 
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-xl flex items-center justify-center border-2 border-white shadow-lg"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <UtensilsCrossed className="h-8 w-8 text-white" />
+                </div>
+              ))}
+              <div className="text-white">
+                <h1 className="font-display font-bold text-2xl md:text-3xl drop-shadow-lg">{restaurant.name}</h1>
+                {restaurant.cuisine_type && (
+                  <Badge 
+                    className="mt-1"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {restaurant.cuisine_type}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header - Only show if no cover image */}
+      {!coverImage && (
+        <header className={`${cardClasses} border-b sticky top-0 z-50`}>
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             {showLogo && (restaurant.logo_url ? (
@@ -224,6 +268,7 @@ export default function PublicMenu() {
           </div>
         </div>
       </header>
+      )}
 
       {/* Welcome Message */}
       {welcomeMessage && (
