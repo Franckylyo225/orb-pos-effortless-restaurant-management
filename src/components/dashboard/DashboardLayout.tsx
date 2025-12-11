@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  ChefHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -24,6 +25,7 @@ import { RestaurantSwitcher } from "./RestaurantSwitcher";
 const menuItems = [
   { icon: LayoutDashboard, label: "Vue d'ensemble", href: "/dashboard" },
   { icon: ShoppingBag, label: "Caisse (POS)", href: "/dashboard/pos" },
+  { icon: ChefHat, label: "Cuisine", href: "/dashboard/kitchen" },
   { icon: LayoutGrid, label: "Tables", href: "/dashboard/tables" },
   { icon: UtensilsCrossed, label: "Menu", href: "/dashboard/menu" },
   { icon: Package, label: "Stock", href: "/dashboard/stock" },
