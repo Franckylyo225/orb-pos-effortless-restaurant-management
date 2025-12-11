@@ -41,6 +41,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { DateRange as CalendarDateRange } from "react-day-picker";
 
 const CHART_COLORS = [
   "hsl(var(--primary))",
@@ -54,14 +56,35 @@ export default function Reports() {
   const presetRanges = getPresetRanges();
   const [dateRange, setDateRange] = useState<DateRange>(presetRanges[2].range); // 7 derniers jours
   const [selectedPreset, setSelectedPreset] = useState("7 derniers jours");
+  const [calendarRange, setCalendarRange] = useState<CalendarDateRange | undefined>({
+    from: presetRanges[2].range.from,
+    to: presetRanges[2].range.to,
+  });
+  const [isCustomRange, setIsCustomRange] = useState(false);
   const { restaurant } = useRestaurant();
   const { loading, revenueStats, paymentMethods, productSales, dailySales, weeklyComparison } = useReports(dateRange);
 
   const handlePresetChange = (value: string) => {
+    if (value === "custom") {
+      setIsCustomRange(true);
+      setSelectedPreset("Personnalisé");
+      return;
+    }
+    setIsCustomRange(false);
     setSelectedPreset(value);
     const preset = presetRanges.find((p) => p.label === value);
     if (preset) {
       setDateRange(preset.range);
+      setCalendarRange({ from: preset.range.from, to: preset.range.to });
+    }
+  };
+
+  const handleCalendarSelect = (range: CalendarDateRange | undefined) => {
+    setCalendarRange(range);
+    if (range?.from && range?.to) {
+      setDateRange({ from: range.from, to: range.to });
+      setSelectedPreset("Personnalisé");
+      setIsCustomRange(true);
     }
   };
 
@@ -234,8 +257,47 @@ export default function Reports() {
                     {preset.label}
                   </SelectItem>
                 ))}
+                <SelectItem value="custom">Personnalisé...</SelectItem>
               </SelectContent>
             </Select>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "justify-start text-left font-normal min-w-[260px]",
+                    !calendarRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {calendarRange?.from ? (
+                    calendarRange.to ? (
+                      <>
+                        {format(calendarRange.from, "dd MMM yyyy", { locale: fr })} -{" "}
+                        {format(calendarRange.to, "dd MMM yyyy", { locale: fr })}
+                      </>
+                    ) : (
+                      format(calendarRange.from, "dd MMM yyyy", { locale: fr })
+                    )
+                  ) : (
+                    <span>Choisir une période</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={calendarRange?.from}
+                  selected={calendarRange}
+                  onSelect={handleCalendarSelect}
+                  numberOfMonths={2}
+                  locale={fr}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
             <Button variant="outline" onClick={exportToCSV}>
               <Download className="mr-2 h-4 w-4" />
               CSV
