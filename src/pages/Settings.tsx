@@ -221,7 +221,7 @@ export default function Settings() {
     }
   };
 
-
+  const handleSaveMenuSettings = async () => {
     if (!restaurant) return;
     
     setSavingMenu(true);
@@ -1036,3 +1036,4 @@ export default function Settings() {
     </DashboardLayout>
   );
 }
+
