@@ -22,6 +22,12 @@ interface Restaurant {
   email: string | null;
   logo_url: string | null;
   cuisine_type: string | null;
+  menu_primary_color: string | null;
+  menu_bg_style: string | null;
+  menu_show_logo: boolean | null;
+  menu_show_address: boolean | null;
+  menu_show_phone: boolean | null;
+  menu_welcome_message: string | null;
 }
 
 interface Category {
@@ -63,9 +69,9 @@ export default function PublicMenu() {
         // Fetch restaurant info (public access needed)
         const { data: restaurantData, error: restaurantError } = await supabase
           .from("restaurants")
-          .select("id, name, address, phone, email, logo_url, cuisine_type")
+          .select("id, name, address, phone, email, logo_url, cuisine_type, menu_primary_color, menu_bg_style, menu_show_logo, menu_show_address, menu_show_phone, menu_welcome_message")
           .eq("id", restaurantId)
-          .single();
+          .maybeSingle();
 
         if (restaurantError) throw restaurantError;
         if (!restaurantData) {
@@ -156,27 +162,61 @@ export default function PublicMenu() {
     );
   }
 
+  // Theme settings
+  const primaryColor = restaurant.menu_primary_color || "#ea580c";
+  const bgStyle = restaurant.menu_bg_style || "light";
+  const showLogo = restaurant.menu_show_logo ?? true;
+  const showAddress = restaurant.menu_show_address ?? true;
+  const showPhone = restaurant.menu_show_phone ?? true;
+  const welcomeMessage = restaurant.menu_welcome_message;
+
+  // Background classes based on style
+  const bgClasses = {
+    light: "bg-gradient-to-b from-white to-gray-50 text-gray-900",
+    dark: "bg-gradient-to-b from-gray-900 to-gray-950 text-white",
+    warm: "bg-gradient-to-b from-orange-50 to-amber-50 text-gray-900",
+  }[bgStyle] || "bg-gradient-to-b from-white to-gray-50 text-gray-900";
+
+  const cardClasses = {
+    light: "bg-white border-gray-200",
+    dark: "bg-gray-800 border-gray-700",
+    warm: "bg-white/80 border-orange-200",
+  }[bgStyle] || "bg-white border-gray-200";
+
+  const mutedTextClasses = {
+    light: "text-gray-500",
+    dark: "text-gray-400",
+    warm: "text-orange-700/70",
+  }[bgStyle] || "text-gray-500";
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
+    <div className={`min-h-screen ${bgClasses}`} style={{ "--menu-primary": primaryColor } as React.CSSProperties}>
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-50">
+      <header className={`${cardClasses} border-b sticky top-0 z-50`}>
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            {restaurant.logo_url ? (
+            {showLogo && (restaurant.logo_url ? (
               <img
                 src={restaurant.logo_url}
                 alt={restaurant.name}
                 className="w-14 h-14 rounded-xl object-cover"
               />
             ) : (
-              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
-                <UtensilsCrossed className="h-7 w-7 text-primary" />
+              <div 
+                className="w-14 h-14 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: `${primaryColor}20` }}
+              >
+                <UtensilsCrossed className="h-7 w-7" style={{ color: primaryColor }} />
               </div>
-            )}
+            ))}
             <div className="flex-1 min-w-0">
               <h1 className="font-display font-bold text-xl truncate">{restaurant.name}</h1>
               {restaurant.cuisine_type && (
-                <Badge variant="secondary" className="mt-1">
+                <Badge 
+                  variant="secondary" 
+                  className="mt-1"
+                  style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                >
                   {restaurant.cuisine_type}
                 </Badge>
               )}
@@ -185,35 +225,46 @@ export default function PublicMenu() {
         </div>
       </header>
 
-      {/* Restaurant Info */}
-      <div className="bg-card border-b border-border">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            {restaurant.address && (
-              <div className="flex items-center gap-2">
-                <MapPin size={16} />
-                <span>{restaurant.address}</span>
-              </div>
-            )}
-            {restaurant.phone && (
-              <a href={`tel:${restaurant.phone}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                <Phone size={16} />
-                <span>{restaurant.phone}</span>
-              </a>
-            )}
-            {restaurant.email && (
-              <a href={`mailto:${restaurant.email}`} className="flex items-center gap-2 hover:text-primary transition-colors">
-                <Mail size={16} />
-                <span>{restaurant.email}</span>
-              </a>
-            )}
+      {/* Welcome Message */}
+      {welcomeMessage && (
+        <div className={`${cardClasses} border-b`}>
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <p className={`text-center italic ${mutedTextClasses}`}>{welcomeMessage}</p>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Restaurant Info */}
+      {(showAddress || showPhone || restaurant.email) && (
+        <div className={`${cardClasses} border-b`}>
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <div className={`flex flex-wrap gap-4 text-sm ${mutedTextClasses}`}>
+              {showAddress && restaurant.address && (
+                <div className="flex items-center gap-2">
+                  <MapPin size={16} />
+                  <span>{restaurant.address}</span>
+                </div>
+              )}
+              {showPhone && restaurant.phone && (
+                <a href={`tel:${restaurant.phone}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <Phone size={16} />
+                  <span>{restaurant.phone}</span>
+                </a>
+              )}
+              {restaurant.email && (
+                <a href={`mailto:${restaurant.email}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <Mail size={16} />
+                  <span>{restaurant.email}</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Categories Navigation */}
       {categories.length > 0 && (
-        <div className="bg-card/50 backdrop-blur-sm sticky top-[73px] z-40 border-b border-border">
+        <div className={`${cardClasses} backdrop-blur-sm sticky top-[73px] z-40 border-b`}>
           <div className="max-w-4xl mx-auto px-4">
             <div className="flex gap-2 overflow-x-auto py-3 no-scrollbar">
               {categories.map((category) => (
@@ -222,9 +273,10 @@ export default function PublicMenu() {
                   onClick={() => setActiveCategory(category.id)}
                   className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                     activeCategory === category.id
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                      ? "text-white shadow-sm"
+                      : `${bgStyle === "dark" ? "bg-gray-700 hover:bg-gray-600 text-gray-300" : "bg-gray-100 hover:bg-gray-200 text-gray-600"}`
                   }`}
+                  style={activeCategory === category.id ? { backgroundColor: primaryColor } : undefined}
                 >
                   {category.name}
                 </button>
@@ -234,9 +286,10 @@ export default function PublicMenu() {
                   onClick={() => setActiveCategory("uncategorized")}
                   className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                     activeCategory === "uncategorized"
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                      ? "text-white shadow-sm"
+                      : `${bgStyle === "dark" ? "bg-gray-700 hover:bg-gray-600 text-gray-300" : "bg-gray-100 hover:bg-gray-200 text-gray-600"}`
                   }`}
+                  style={activeCategory === "uncategorized" ? { backgroundColor: primaryColor } : undefined}
                 >
                   Autres
                 </button>
@@ -278,7 +331,7 @@ export default function PublicMenu() {
                   </div>
                   <div className="grid gap-4">
                     {items.map((item) => (
-                      <MenuItemCard key={item.id} item={item} />
+                      <MenuItemCard key={item.id} item={item} primaryColor={primaryColor} cardClasses={cardClasses} mutedTextClasses={mutedTextClasses} />
                     ))}
                   </div>
                 </section>
@@ -292,7 +345,7 @@ export default function PublicMenu() {
                 </div>
                 <div className="grid gap-4">
                   {uncategorizedItems.map((item) => (
-                    <MenuItemCard key={item.id} item={item} />
+                    <MenuItemCard key={item.id} item={item} primaryColor={primaryColor} cardClasses={cardClasses} mutedTextClasses={mutedTextClasses} />
                   ))}
                 </div>
               </section>
@@ -302,10 +355,10 @@ export default function PublicMenu() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-card border-t border-border mt-12">
+      <footer className={`${cardClasses} border-t mt-12`}>
         <div className="max-w-4xl mx-auto px-4 py-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Propulsé par <span className="font-semibold text-primary">ORBI POS</span>
+          <p className={`text-sm ${mutedTextClasses}`}>
+            Propulsé par <span className="font-semibold" style={{ color: primaryColor }}>ORBI POS</span>
           </p>
         </div>
       </footer>
@@ -313,18 +366,25 @@ export default function PublicMenu() {
   );
 }
 
-function MenuItemCard({ item }: { item: MenuItem }) {
+interface MenuItemCardProps {
+  item: MenuItem;
+  primaryColor: string;
+  cardClasses: string;
+  mutedTextClasses: string;
+}
+
+function MenuItemCard({ item, primaryColor, cardClasses, mutedTextClasses }: MenuItemCardProps) {
   const hasVariants = item.variants && Array.isArray(item.variants) && item.variants.length > 0;
 
   return (
-    <div className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow">
+    <div className={`${cardClasses} rounded-2xl border overflow-hidden hover:shadow-lg transition-shadow`}>
       <div className="flex">
         <div className="flex-1 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg">{item.name}</h3>
               {item.description && (
-                <p className="text-muted-foreground text-sm mt-1 line-clamp-2">
+                <p className={`${mutedTextClasses} text-sm mt-1 line-clamp-2`}>
                   {item.description}
                 </p>
               )}
@@ -335,12 +395,17 @@ function MenuItemCard({ item }: { item: MenuItem }) {
             <div className="flex flex-wrap gap-2">
               {hasVariants ? (
                 item.variants.map((variant: any, index: number) => (
-                  <Badge key={index} variant="secondary" className="text-sm">
+                  <Badge 
+                    key={index} 
+                    variant="secondary" 
+                    className="text-sm"
+                    style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                  >
                     {variant.name}: {Number(variant.price).toLocaleString()} FCFA
                   </Badge>
                 ))
               ) : (
-                <span className="text-lg font-bold text-primary">
+                <span className="text-lg font-bold" style={{ color: primaryColor }}>
                   {Number(item.price).toLocaleString()} FCFA
                 </span>
               )}

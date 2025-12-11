@@ -28,7 +28,18 @@ export default function Settings() {
   const { restaurant, loading } = useRestaurant();
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const [savingMenu, setSavingMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // Menu customization state
+  const [menuSettings, setMenuSettings] = useState({
+    menu_primary_color: "#ea580c",
+    menu_bg_style: "light",
+    menu_show_logo: true,
+    menu_show_address: true,
+    menu_show_phone: true,
+    menu_welcome_message: "",
+  });
   
   // Restaurant info state
   const [restaurantInfo, setRestaurantInfo] = useState({
@@ -61,6 +72,15 @@ export default function Settings() {
         phone: restaurant.phone || "",
         email: restaurant.email || "",
         cuisine_type: restaurant.cuisine_type || "",
+      });
+      // Load menu settings from restaurant data
+      setMenuSettings({
+        menu_primary_color: (restaurant as any).menu_primary_color || "#ea580c",
+        menu_bg_style: (restaurant as any).menu_bg_style || "light",
+        menu_show_logo: (restaurant as any).menu_show_logo ?? true,
+        menu_show_address: (restaurant as any).menu_show_address ?? true,
+        menu_show_phone: (restaurant as any).menu_show_phone ?? true,
+        menu_welcome_message: (restaurant as any).menu_welcome_message || "",
       });
     }
   });
@@ -96,6 +116,41 @@ export default function Settings() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveMenuSettings = async () => {
+    if (!restaurant) return;
+    
+    setSavingMenu(true);
+    try {
+      const { error } = await supabase
+        .from("restaurants")
+        .update({
+          menu_primary_color: menuSettings.menu_primary_color,
+          menu_bg_style: menuSettings.menu_bg_style,
+          menu_show_logo: menuSettings.menu_show_logo,
+          menu_show_address: menuSettings.menu_show_address,
+          menu_show_phone: menuSettings.menu_show_phone,
+          menu_welcome_message: menuSettings.menu_welcome_message || null,
+        })
+        .eq("id", restaurant.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Apparence mise à jour",
+        description: "Les paramètres du menu public ont été enregistrés.",
+      });
+    } catch (error) {
+      console.error("Error saving menu settings:", error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder les paramètres.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingMenu(false);
     }
   };
 
@@ -328,6 +383,134 @@ export default function Settings() {
                     <li>• Le menu se met à jour automatiquement quand vous modifiez vos plats</li>
                   </ul>
                 </div>
+
+                {/* Customization Section */}
+                <Card className="border-dashed">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Personnalisation de l'apparence</CardTitle>
+                    <CardDescription>
+                      Adaptez le design du menu à votre marque
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Color Picker */}
+                    <div className="space-y-3">
+                      <Label>Couleur principale</Label>
+                      <div className="flex gap-3 flex-wrap">
+                        {[
+                          { color: "#ea580c", name: "Orange" },
+                          { color: "#16a34a", name: "Vert" },
+                          { color: "#2563eb", name: "Bleu" },
+                          { color: "#dc2626", name: "Rouge" },
+                          { color: "#7c3aed", name: "Violet" },
+                          { color: "#0891b2", name: "Cyan" },
+                          { color: "#ca8a04", name: "Or" },
+                          { color: "#be185d", name: "Rose" },
+                        ].map((item) => (
+                          <button
+                            key={item.color}
+                            onClick={() => setMenuSettings({ ...menuSettings, menu_primary_color: item.color })}
+                            className={`w-10 h-10 rounded-xl border-2 transition-all ${
+                              menuSettings.menu_primary_color === item.color
+                                ? "border-foreground scale-110 shadow-lg"
+                                : "border-transparent hover:scale-105"
+                            }`}
+                            style={{ backgroundColor: item.color }}
+                            title={item.name}
+                          />
+                        ))}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="color"
+                            value={menuSettings.menu_primary_color}
+                            onChange={(e) => setMenuSettings({ ...menuSettings, menu_primary_color: e.target.value })}
+                            className="w-10 h-10 p-1 cursor-pointer"
+                          />
+                          <span className="text-sm text-muted-foreground">Personnalisé</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Background Style */}
+                    <div className="space-y-3">
+                      <Label>Style de fond</Label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { value: "light", label: "Clair", icon: "☀️" },
+                          { value: "dark", label: "Sombre", icon: "🌙" },
+                          { value: "warm", label: "Chaleureux", icon: "🔥" },
+                        ].map((style) => (
+                          <button
+                            key={style.value}
+                            onClick={() => setMenuSettings({ ...menuSettings, menu_bg_style: style.value })}
+                            className={`p-4 rounded-xl border-2 transition-all text-center ${
+                              menuSettings.menu_bg_style === style.value
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-primary/50"
+                            }`}
+                          >
+                            <span className="text-2xl block mb-1">{style.icon}</span>
+                            <span className="text-sm font-medium">{style.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Display Options */}
+                    <div className="space-y-4">
+                      <Label>Options d'affichage</Label>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg border">
+                          <div>
+                            <p className="font-medium">Afficher le logo</p>
+                            <p className="text-sm text-muted-foreground">Votre logo apparaît en haut du menu</p>
+                          </div>
+                          <Switch
+                            checked={menuSettings.menu_show_logo}
+                            onCheckedChange={(checked) => setMenuSettings({ ...menuSettings, menu_show_logo: checked })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg border">
+                          <div>
+                            <p className="font-medium">Afficher l'adresse</p>
+                            <p className="text-sm text-muted-foreground">L'adresse du restaurant est visible</p>
+                          </div>
+                          <Switch
+                            checked={menuSettings.menu_show_address}
+                            onCheckedChange={(checked) => setMenuSettings({ ...menuSettings, menu_show_address: checked })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg border">
+                          <div>
+                            <p className="font-medium">Afficher le téléphone</p>
+                            <p className="text-sm text-muted-foreground">Les clients peuvent vous appeler</p>
+                          </div>
+                          <Switch
+                            checked={menuSettings.menu_show_phone}
+                            onCheckedChange={(checked) => setMenuSettings({ ...menuSettings, menu_show_phone: checked })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Welcome Message */}
+                    <div className="space-y-2">
+                      <Label htmlFor="welcome">Message de bienvenue (optionnel)</Label>
+                      <Textarea
+                        id="welcome"
+                        value={menuSettings.menu_welcome_message}
+                        onChange={(e) => setMenuSettings({ ...menuSettings, menu_welcome_message: e.target.value })}
+                        placeholder="Bienvenue chez nous ! Découvrez nos spécialités..."
+                        rows={2}
+                      />
+                    </div>
+
+                    <Button onClick={handleSaveMenuSettings} disabled={savingMenu} className="w-full gap-2">
+                      {savingMenu ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Enregistrer l'apparence
+                    </Button>
+                  </CardContent>
+                </Card>
               </CardContent>
             </Card>
           </TabsContent>
