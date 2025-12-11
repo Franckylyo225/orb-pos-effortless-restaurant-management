@@ -21,6 +21,7 @@ export function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             <Link to="/features" className="nav-link">Fonctionnalités</Link>
+            <Link to="/use-cases" className="nav-link">Cas d'usage</Link>
             <Link to="/pricing" className="nav-link">Tarifs</Link>
             <Link to="/about" className="nav-link">À propos</Link>
             <Link to="/contact" className="nav-link">Contact</Link>
@@ -55,6 +56,13 @@ export function Navbar() {
                 onClick={() => setIsOpen(false)}
               >
                 Fonctionnalités
+              </Link>
+              <Link
+                to="/use-cases"
+                className="px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Cas d'usage
               </Link>
               <Link
                 to="/pricing"
