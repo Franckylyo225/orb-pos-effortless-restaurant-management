@@ -23,6 +23,7 @@ import Subscription from "./pages/Subscription";
 import Onboarding from "./pages/Onboarding";
 import OrderHistory from "./pages/OrderHistory";
 import Reports from "./pages/Reports";
+import Team from "./pages/Team";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/dashboard/subscription" element={<Subscription />} />
             <Route path="/dashboard/orders" element={<OrderHistory />} />
             <Route path="/dashboard/reports" element={<Reports />} />
+            <Route path="/dashboard/team" element={<Team />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
