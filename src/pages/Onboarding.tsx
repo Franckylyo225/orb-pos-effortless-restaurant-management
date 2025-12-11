@@ -91,9 +91,10 @@ export default function Onboarding() {
     }
 
     if (result.error) {
+      console.error("Restaurant creation failed:", result.error, result.details);
       toast({
-        title: "Erreur",
-        description: result.error.message || "Impossible de créer le restaurant",
+        title: "Erreur de création",
+        description: result.error.message || "Impossible de créer le restaurant. Veuillez réessayer.",
         variant: "destructive",
       });
       setIsSubmitting(false);
