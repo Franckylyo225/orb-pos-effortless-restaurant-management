@@ -6,15 +6,13 @@ import { Label } from "@/components/ui/label";
 import {
   Plus,
   Search,
-  MoreVertical,
   Edit,
   Trash2,
   Eye,
   EyeOff,
-  X,
   Loader2,
 } from "lucide-react";
-import { useMenu } from "@/hooks/useMenu";
+import { useMenu, MenuItem } from "@/hooks/useMenu";
 import {
   Dialog,
   DialogContent,
@@ -22,34 +20,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-
-const foodEmojis = ["🍗", "🐟", "🍌", "🥜", "🍹", "🐠", "🍲", "🥩", "🥗", "🍕", "🍔", "🌮", "🍰", "☕", "🍺"];
+import { MenuItemForm } from "@/components/menu/MenuItemForm";
 
 export default function Menu() {
-  const { categories, menuItems, loading, addCategory, addMenuItem, toggleAvailability, deleteMenuItem } = useMenu();
+  const { categories, menuItems, loading, addCategory, addMenuItem, updateMenuItem, toggleAvailability, deleteMenuItem } = useMenu();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [showEditItem, setShowEditItem] = useState(false);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [newItem, setNewItem] = useState({
-    name: "",
-    description: "",
-    price: "",
-    category_id: "",
-    cost_price: "",
-    emoji: "🍽️",
-  });
-
   const [newCategory, setNewCategory] = useState({
     name: "",
     description: "",
@@ -61,21 +44,35 @@ export default function Menu() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleAddItem = async () => {
-    if (!newItem.name || !newItem.price) return;
-    
-    setIsSubmitting(true);
-    await addMenuItem({
-      name: newItem.name,
-      description: newItem.description,
-      price: parseFloat(newItem.price),
-      category_id: newItem.category_id || undefined,
-      cost_price: newItem.cost_price ? parseFloat(newItem.cost_price) : 0,
-    });
-    
-    setNewItem({ name: "", description: "", price: "", category_id: "", cost_price: "", emoji: "🍽️" });
+  const handleAddItem = async (data: {
+    name: string;
+    description?: string;
+    price: number;
+    category_id?: string;
+    cost_price?: number;
+    image_url?: string | null;
+  }) => {
+    await addMenuItem(data);
     setShowAddItem(false);
-    setIsSubmitting(false);
+  };
+
+  const handleEditItem = async (data: {
+    name: string;
+    description?: string;
+    price: number;
+    category_id?: string;
+    cost_price?: number;
+    image_url?: string | null;
+  }) => {
+    if (!editingItem) return;
+    await updateMenuItem(editingItem.id, data);
+    setShowEditItem(false);
+    setEditingItem(null);
+  };
+
+  const openEditDialog = (item: MenuItem) => {
+    setEditingItem(item);
+    setShowEditItem(true);
   };
 
   const handleAddCategory = async () => {
@@ -88,14 +85,27 @@ export default function Menu() {
     setIsSubmitting(false);
   };
 
-  const getItemEmoji = (item: typeof menuItems[0]) => {
+  const getItemDisplay = (item: MenuItem) => {
+    if (item.image_url) {
+      return (
+        <img 
+          src={item.image_url} 
+          alt={item.name} 
+          className="w-14 h-14 rounded-xl object-cover"
+        />
+      );
+    }
+    
+    // Fallback to emoji based on category
     const categoryName = item.category?.name?.toLowerCase() || "";
-    if (categoryName.includes("grill") || categoryName.includes("viande")) return "🍗";
-    if (categoryName.includes("poisson")) return "🐟";
-    if (categoryName.includes("boisson")) return "🍹";
-    if (categoryName.includes("dessert")) return "🍰";
-    if (categoryName.includes("entrée") || categoryName.includes("salade")) return "🥗";
-    return "🍽️";
+    let emoji = "🍽️";
+    if (categoryName.includes("grill") || categoryName.includes("viande")) emoji = "🍗";
+    else if (categoryName.includes("poisson")) emoji = "🐟";
+    else if (categoryName.includes("boisson")) emoji = "🍹";
+    else if (categoryName.includes("dessert")) emoji = "🍰";
+    else if (categoryName.includes("entrée") || categoryName.includes("salade")) emoji = "🥗";
+    
+    return <span className="text-4xl">{emoji}</span>;
   };
 
   if (loading) {
@@ -163,70 +173,15 @@ export default function Menu() {
                   Ajouter un plat
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Nouveau plat</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label>Nom du plat *</Label>
-                    <Input
-                      placeholder="Ex: Poulet braisé"
-                      value={newItem.name}
-                      onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Textarea
-                      placeholder="Description du plat"
-                      value={newItem.description}
-                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Prix (CFA) *</Label>
-                      <Input
-                        type="number"
-                        placeholder="6500"
-                        value={newItem.price}
-                        onChange={(e) => setNewItem({ ...newItem, price: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Coût matière</Label>
-                      <Input
-                        type="number"
-                        placeholder="3000"
-                        value={newItem.cost_price}
-                        onChange={(e) => setNewItem({ ...newItem, cost_price: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Catégorie</Label>
-                    <Select
-                      value={newItem.category_id}
-                      onValueChange={(value) => setNewItem({ ...newItem, category_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une catégorie" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button className="w-full" onClick={handleAddItem} disabled={isSubmitting || !newItem.name || !newItem.price}>
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Ajouter le plat
-                  </Button>
-                </div>
+                <MenuItemForm
+                  categories={categories}
+                  onSubmit={handleAddItem}
+                  onCancel={() => setShowAddItem(false)}
+                />
               </DialogContent>
             </Dialog>
           </div>
@@ -295,7 +250,7 @@ export default function Menu() {
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <span className="text-4xl">{getItemEmoji(item)}</span>
+                    {getItemDisplay(item)}
                     <div>
                       <h3 className="font-semibold text-lg">{item.name}</h3>
                       {item.category && (
@@ -315,7 +270,15 @@ export default function Menu() {
                   <span className="text-xl font-bold text-primary">
                     {Number(item.price).toLocaleString()} CFA
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openEditDialog(item)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Edit size={18} />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -333,6 +296,30 @@ export default function Menu() {
             </div>
           ))}
         </div>
+
+        {/* Edit Item Dialog */}
+        <Dialog open={showEditItem} onOpenChange={(open) => {
+          setShowEditItem(open);
+          if (!open) setEditingItem(null);
+        }}>
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Modifier le plat</DialogTitle>
+            </DialogHeader>
+            {editingItem && (
+              <MenuItemForm
+                categories={categories}
+                onSubmit={handleEditItem}
+                onCancel={() => {
+                  setShowEditItem(false);
+                  setEditingItem(null);
+                }}
+                initialData={editingItem}
+                isEditing
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
