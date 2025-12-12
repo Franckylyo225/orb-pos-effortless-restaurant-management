@@ -28,7 +28,12 @@ import Team from "./pages/Team";
 import PublicMenu from "./pages/PublicMenu";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminRegister from "./pages/admin/AdminRegister";
-import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminRestaurants from "./pages/admin/AdminRestaurants";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminMarketing from "./pages/admin/AdminMarketing";
+import AdminAdmins from "./pages/admin/AdminAdmins";
+import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,9 +51,14 @@ const App = () => (
               <Route path="/menu/:restaurantId" element={<PublicMenu />} />
               
               {/* Admin Routes */}
-              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin" element={<AdminAnalytics />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/register" element={<AdminRegister />} />
+              <Route path="/admin/restaurants" element={<AdminRestaurants />} />
+              <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
+              <Route path="/admin/marketing" element={<AdminMarketing />} />
+              <Route path="/admin/admins" element={<AdminAdmins />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
               
               <Route path="/" element={<Index />} />
               <Route path="/features" element={<FeaturesPage />} />
