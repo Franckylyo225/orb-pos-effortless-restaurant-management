@@ -53,6 +53,13 @@ export type Database = {
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "categories_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
+            referencedColumns: ["id"]
+          },
         ]
       }
       menu_items: {
@@ -113,6 +120,13 @@ export type Database = {
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "menu_items_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
+            referencedColumns: ["id"]
+          },
         ]
       }
       mobile_money_providers: {
@@ -149,6 +163,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mobile_money_providers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -262,6 +283,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_table_id_fkey"
             columns: ["table_id"]
             isOneToOne: false
@@ -351,6 +379,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -502,6 +537,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stock_products_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "stock_products_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
@@ -509,6 +551,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      super_admins: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
@@ -553,6 +613,13 @@ export type Database = {
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suppliers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
             referencedColumns: ["id"]
           },
         ]
@@ -605,6 +672,13 @@ export type Database = {
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tables_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_restaurants: {
@@ -640,6 +714,13 @@ export type Database = {
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_restaurants_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -669,11 +750,59 @@ export type Database = {
             referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_roles_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "saas_restaurant_stats"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      saas_restaurant_stats: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string | null
+          name: string | null
+          phone: string | null
+          subscription_plan: string | null
+          team_size: number | null
+          total_menu_items: number | null
+          total_orders: number | null
+          total_revenue: number | null
+          total_tables: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string | null
+          name?: string | null
+          phone?: string | null
+          subscription_plan?: string | null
+          team_size?: number | null
+          total_menu_items?: never
+          total_orders?: never
+          total_revenue?: never
+          total_tables?: never
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string | null
+          name?: string | null
+          phone?: string | null
+          subscription_plan?: string | null
+          team_size?: number | null
+          total_menu_items?: never
+          total_orders?: never
+          total_revenue?: never
+          total_tables?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_subscription_restaurant_limit: {
@@ -689,6 +818,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "manager" | "serveur" | "caissier"

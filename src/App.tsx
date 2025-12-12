@@ -25,6 +25,7 @@ import OrderHistory from "./pages/OrderHistory";
 import Reports from "./pages/Reports";
 import Team from "./pages/Team";
 import PublicMenu from "./pages/PublicMenu";
+import SaasAdmin from "./pages/SaasAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/dashboard/orders" element={<OrderHistory />} />
             <Route path="/dashboard/reports" element={<Reports />} />
             <Route path="/dashboard/team" element={<Team />} />
+            <Route path="/saas-admin" element={<SaasAdmin />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
