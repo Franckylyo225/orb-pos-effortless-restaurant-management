@@ -305,13 +305,13 @@ export default function POS() {
                   <button
                     key={item.id}
                     onClick={() => addToCart(item)}
-                    className="pos-button flex flex-col items-center justify-center gap-2 bg-card border-2 border-border hover:border-primary/50 hover:shadow-medium p-4"
+                    className="pos-button flex flex-col items-center justify-center gap-1.5 bg-card border-2 border-border hover:border-primary/50 hover:shadow-medium p-3 md:p-4"
                   >
-                    <span className="text-3xl md:text-4xl">{getItemEmoji(item)}</span>
-                    <span className="font-medium text-sm md:text-base text-center line-clamp-2">
+                    <span className="text-2xl md:text-3xl">{getItemEmoji(item)}</span>
+                    <span className="font-semibold text-sm md:text-base text-center line-clamp-2 leading-tight">
                       {item.name}
                     </span>
-                    <span className="text-primary font-bold">
+                    <span className="text-primary font-bold text-sm md:text-base">
                       {Number(item.price).toLocaleString()} CFA
                     </span>
                   </button>
