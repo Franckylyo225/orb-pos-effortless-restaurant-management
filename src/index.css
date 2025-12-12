@@ -143,7 +143,7 @@
   }
 
   .pos-button {
-    @apply h-20 md:h-24 text-lg md:text-xl font-semibold rounded-2xl transition-all duration-200 active:scale-95 hover:shadow-medium;
+    @apply min-h-28 md:min-h-32 text-base md:text-lg font-semibold rounded-2xl transition-all duration-200 active:scale-95 hover:shadow-medium;
   }
 
   .table-cell {
