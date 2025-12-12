@@ -27,6 +27,7 @@ import Reports from "./pages/Reports";
 import Team from "./pages/Team";
 import PublicMenu from "./pages/PublicMenu";
 import AdminLogin from "./pages/admin/AdminLogin";
+import AdminRegister from "./pages/admin/AdminRegister";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -47,6 +48,7 @@ const App = () => (
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/register" element={<AdminRegister />} />
               
               <Route path="/" element={<Index />} />
               <Route path="/features" element={<FeaturesPage />} />
