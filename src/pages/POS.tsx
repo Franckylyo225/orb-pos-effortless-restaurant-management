@@ -20,12 +20,13 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useMenu } from "@/hooks/useMenu";
+import { useMenu, MenuItem } from "@/hooks/useMenu";
 import { useOrders, OrderItem } from "@/hooks/useOrders";
 import { useOrderNotifications } from "@/hooks/useOrderNotifications";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useMobileMoneyProviders } from "@/hooks/useMobileMoneyProviders";
 import { PaymentSuccessModal } from "@/components/pos/PaymentSuccessModal";
+import { VariantSelectionModal } from "@/components/pos/VariantSelectionModal";
 import {
   Select,
   SelectContent,
@@ -34,8 +35,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+interface Variant {
+  name: string;
+  price: number;
+}
+
 interface CartItem extends OrderItem {
   emoji: string;
+  variant?: string;
 }
 
 interface PaymentSuccessData {
@@ -68,6 +75,7 @@ export default function POS() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<PaymentSuccessData | null>(null);
+  const [variantModalItem, setVariantModalItem] = useState<MenuItem | null>(null);
   const { toast } = useToast();
 
   const loading = menuLoading || ordersLoading;
@@ -103,13 +111,31 @@ export default function POS() {
     return { type: "emoji" as const, value: emoji };
   };
 
-  const addToCart = (item: typeof menuItems[0]) => {
+  const hasVariants = (item: MenuItem): boolean => {
+    const variants = item.variants as unknown as Variant[];
+    return Array.isArray(variants) && variants.some(v => v.name && v.price > 0);
+  };
+
+  const handleProductClick = (item: MenuItem) => {
+    if (hasVariants(item)) {
+      setVariantModalItem(item);
+    } else {
+      addToCart(item, Number(item.price));
+    }
+  };
+
+  const addToCart = (item: MenuItem, price: number, variantName?: string) => {
     const display = getItemDisplay(item);
+    const cartKey = variantName ? `${item.id}-${variantName}` : item.id;
+    const displayName = variantName ? `${item.name} (${variantName})` : item.name;
+    
     setCart((prev) => {
-      const existing = prev.find((cartItem) => cartItem.menu_item_id === item.id);
+      const existing = prev.find((cartItem) => 
+        cartItem.menu_item_id === item.id && cartItem.variant === variantName
+      );
       if (existing) {
         return prev.map((cartItem) =>
-          cartItem.menu_item_id === item.id
+          cartItem.menu_item_id === item.id && cartItem.variant === variantName
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
             : cartItem
         );
@@ -118,20 +144,29 @@ export default function POS() {
         ...prev,
         {
           menu_item_id: item.id,
-          name: item.name,
-          price: Number(item.price),
+          name: displayName,
+          price: price,
           quantity: 1,
           emoji: display.value,
+          variant: variantName,
         },
       ];
     });
   };
 
-  const updateQuantity = (menuItemId: string, delta: number) => {
+  const handleSelectVariant = (item: MenuItem, variant: Variant) => {
+    addToCart(item, variant.price, variant.name);
+  };
+
+  const handleSelectBase = (item: MenuItem) => {
+    addToCart(item, Number(item.price));
+  };
+
+  const updateQuantity = (menuItemId: string, variant: string | undefined, delta: number) => {
     setCart((prev) =>
       prev
         .map((item) =>
-          item.menu_item_id === menuItemId
+          item.menu_item_id === menuItemId && item.variant === variant
             ? { ...item, quantity: Math.max(0, item.quantity + delta) }
             : item
         )
@@ -139,8 +174,8 @@ export default function POS() {
     );
   };
 
-  const removeItem = (menuItemId: string) => {
-    setCart((prev) => prev.filter((item) => item.menu_item_id !== menuItemId));
+  const removeItem = (menuItemId: string, variant: string | undefined) => {
+    setCart((prev) => prev.filter((item) => !(item.menu_item_id === menuItemId && item.variant === variant)));
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -321,7 +356,7 @@ export default function POS() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => addToCart(item)}
+                      onClick={() => handleProductClick(item)}
                       className="pos-button flex flex-col items-center justify-center gap-1.5 bg-card border-2 border-border hover:border-primary/50 hover:shadow-medium p-3 md:p-4"
                     >
                       {display.type === "image" ? (
@@ -418,9 +453,9 @@ export default function POS() {
               </div>
             ) : (
               <div className="space-y-3">
-                {cart.map((item) => (
+                {cart.map((item, index) => (
                   <div
-                    key={item.menu_item_id}
+                    key={`${item.menu_item_id}-${item.variant || 'base'}-${index}`}
                     className="flex items-center gap-3 p-3 rounded-xl bg-muted/50"
                   >
                     <span className="text-2xl">{item.emoji}</span>
@@ -432,7 +467,7 @@ export default function POS() {
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => updateQuantity(item.menu_item_id!, -1)}
+                        onClick={() => updateQuantity(item.menu_item_id!, item.variant, -1)}
                         className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
                       >
                         <Minus size={16} />
@@ -441,13 +476,13 @@ export default function POS() {
                         {item.quantity}
                       </span>
                       <button
-                        onClick={() => updateQuantity(item.menu_item_id!, 1)}
+                        onClick={() => updateQuantity(item.menu_item_id!, item.variant, 1)}
                         className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-colors"
                       >
                         <Plus size={16} />
                       </button>
                       <button
-                        onClick={() => removeItem(item.menu_item_id!)}
+                        onClick={() => removeItem(item.menu_item_id!, item.variant)}
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
                       >
                         <Trash2 size={16} />
@@ -664,6 +699,16 @@ export default function POS() {
             restaurantPhone={restaurant?.phone || undefined}
           />
         )}
+
+        {/* Variant Selection Modal */}
+        <VariantSelectionModal
+          open={!!variantModalItem}
+          onClose={() => setVariantModalItem(null)}
+          item={variantModalItem}
+          onSelectVariant={handleSelectVariant}
+          onSelectBase={handleSelectBase}
+          itemDisplay={variantModalItem ? getItemDisplay(variantModalItem) : null}
+        />
       </div>
     </DashboardLayout>
   );
