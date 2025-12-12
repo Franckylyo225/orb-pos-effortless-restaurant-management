@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,11 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Shield, LogOut, Store, CreditCard, TrendingUp, 
-  Building2, ChefHat, UtensilsCrossed, Loader2, UserPlus, Trash2, Users
+  Building2, ChefHat, UtensilsCrossed, Loader2, UserPlus, Trash2, Users, BarChart3
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 
 interface RestaurantStats {
   id: string;
@@ -211,6 +212,16 @@ const AdminDashboard = () => {
     return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
   };
 
+  const formatCurrencyShort = (amount: number) => {
+    if (amount >= 1000000) {
+      return (amount / 1000000).toFixed(1) + 'M';
+    }
+    if (amount >= 1000) {
+      return (amount / 1000).toFixed(0) + 'K';
+    }
+    return amount.toString();
+  };
+
   const getPlanBadgeVariant = (plan: string | null) => {
     switch (plan) {
       case 'premium': return 'default';
@@ -218,6 +229,53 @@ const AdminDashboard = () => {
       default: return 'outline';
     }
   };
+
+  // Chart data calculations
+  const chartData = useMemo(() => {
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const date = subMonths(new Date(), 5 - i);
+      return {
+        month: format(date, 'MMM yyyy', { locale: fr }),
+        start: startOfMonth(date),
+        end: endOfMonth(date),
+      };
+    });
+
+    const registrationsByMonth = last6Months.map(({ month, start, end }) => {
+      const count = restaurants.filter(r => {
+        if (!r.created_at) return false;
+        const createdAt = parseISO(r.created_at);
+        return isWithinInterval(createdAt, { start, end });
+      }).length;
+      return { month, inscriptions: count };
+    });
+
+    const revenueByMonth = last6Months.map(({ month, start, end }) => {
+      const monthlyRestaurants = restaurants.filter(r => {
+        if (!r.created_at) return false;
+        const createdAt = parseISO(r.created_at);
+        return createdAt <= end;
+      });
+      const revenue = monthlyRestaurants.reduce((acc, r) => acc + (r.total_revenue || 0), 0);
+      return { month, revenue };
+    });
+
+    const planDistribution = [
+      { name: 'Basic', value: stats.basicPlan, color: '#64748b' },
+      { name: 'Pro', value: stats.proPlan, color: '#8b5cf6' },
+      { name: 'Premium', value: stats.premiumPlan, color: '#f97316' },
+    ].filter(p => p.value > 0);
+
+    const topRestaurants = [...restaurants]
+      .sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0))
+      .slice(0, 5)
+      .map(r => ({
+        name: r.name.length > 15 ? r.name.substring(0, 15) + '...' : r.name,
+        revenue: r.total_revenue || 0,
+      }));
+
+    return { registrationsByMonth, revenueByMonth, planDistribution, topRestaurants };
+  }, [restaurants, stats]);
 
   if (loading || isLoading) {
     return (
@@ -299,8 +357,12 @@ const AdminDashboard = () => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="restaurants" className="space-y-4">
+        <Tabs defaultValue="analytics" className="space-y-4">
           <TabsList className="bg-slate-800/50 border border-slate-700">
+            <TabsTrigger value="analytics" className="data-[state=active]:bg-primary">
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Analytics
+            </TabsTrigger>
             <TabsTrigger value="restaurants" className="data-[state=active]:bg-primary">
               <Store className="w-4 h-4 mr-2" />
               Restaurants
@@ -314,6 +376,192 @@ const AdminDashboard = () => {
               Super Admins
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="analytics">
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Inscriptions Chart */}
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-primary" />
+                    Nouvelles inscriptions
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Évolution des inscriptions sur les 6 derniers mois
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData.registrationsByMonth}>
+                        <defs>
+                          <linearGradient id="colorInscriptions" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
+                        <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                          labelStyle={{ color: '#f8fafc' }}
+                          itemStyle={{ color: '#f97316' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="inscriptions" 
+                          stroke="#f97316" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorInscriptions)" 
+                          name="Inscriptions"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Revenue Chart */}
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-green-500" />
+                    Revenus cumulés
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Évolution des revenus totaux de la plateforme
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData.revenueByMonth}>
+                        <defs>
+                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
+                        <YAxis 
+                          stroke="#94a3b8" 
+                          fontSize={12} 
+                          tickFormatter={(value) => formatCurrencyShort(value)}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                          labelStyle={{ color: '#f8fafc' }}
+                          formatter={(value: number) => [formatCurrency(value), 'Revenus']}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="revenue" 
+                          stroke="#22c55e" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorRevenue)" 
+                          name="Revenus"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Plan Distribution */}
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-blue-500" />
+                    Répartition des abonnements
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Distribution des restaurants par plan
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={chartData.planDistribution}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={5}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {chartData.planDistribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                          labelStyle={{ color: '#f8fafc' }}
+                        />
+                        <Legend 
+                          wrapperStyle={{ color: '#94a3b8' }}
+                          formatter={(value) => <span style={{ color: '#94a3b8' }}>{value}</span>}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Top Restaurants */}
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <ChefHat className="w-5 h-5 text-amber-500" />
+                    Top 5 Restaurants
+                  </CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Restaurants avec les meilleurs revenus
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData.topRestaurants} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                        <XAxis 
+                          type="number" 
+                          stroke="#94a3b8" 
+                          fontSize={12}
+                          tickFormatter={(value) => formatCurrencyShort(value)}
+                        />
+                        <YAxis 
+                          type="category" 
+                          dataKey="name" 
+                          stroke="#94a3b8" 
+                          fontSize={12}
+                          width={100}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                          labelStyle={{ color: '#f8fafc' }}
+                          formatter={(value: number) => [formatCurrency(value), 'Revenus']}
+                        />
+                        <Bar 
+                          dataKey="revenue" 
+                          fill="#f59e0b" 
+                          radius={[0, 4, 4, 0]}
+                          name="Revenus"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="restaurants">
             <Card className="bg-slate-800/50 border-slate-700">
