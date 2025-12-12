@@ -80,6 +80,18 @@ const AdminLogin = () => {
               )}
             </Button>
           </form>
+          
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-400">
+              Pas encore de compte admin?{' '}
+              <button 
+                onClick={() => navigate('/admin/register')}
+                className="text-primary hover:underline"
+              >
+                Créer le premier admin
+              </button>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
