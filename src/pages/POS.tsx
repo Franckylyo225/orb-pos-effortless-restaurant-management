@@ -78,18 +78,33 @@ export default function POS() {
     return matchesCategory && matchesSearch && item.is_available;
   });
 
-  const getItemEmoji = (item: typeof menuItems[0]) => {
+  const getItemDisplay = (item: typeof menuItems[0]) => {
+    // Check if image_url is an emoji format
+    if (item.image_url?.startsWith("emoji:")) {
+      const emoji = item.image_url.replace("emoji:", "");
+      return { type: "emoji" as const, value: emoji };
+    }
+    
+    // Real image URL
+    if (item.image_url && !item.image_url.startsWith("emoji:")) {
+      return { type: "image" as const, value: item.image_url };
+    }
+    
+    // Fallback to emoji based on category
     const categoryName = item.category?.name?.toLowerCase() || "";
-    if (categoryName.includes("grill") || categoryName.includes("viande")) return "🍗";
-    if (categoryName.includes("poisson")) return "🐟";
-    if (categoryName.includes("boisson")) return "🍹";
-    if (categoryName.includes("dessert")) return "🍰";
-    if (categoryName.includes("entrée") || categoryName.includes("salade")) return "🥗";
-    if (categoryName.includes("accomp")) return "🍚";
-    return "🍽️";
+    let emoji = "🍽️";
+    if (categoryName.includes("grill") || categoryName.includes("viande")) emoji = "🍗";
+    else if (categoryName.includes("poisson")) emoji = "🐟";
+    else if (categoryName.includes("boisson")) emoji = "🍹";
+    else if (categoryName.includes("dessert")) emoji = "🍰";
+    else if (categoryName.includes("entrée") || categoryName.includes("salade")) emoji = "🥗";
+    else if (categoryName.includes("accomp")) emoji = "🍚";
+    
+    return { type: "emoji" as const, value: emoji };
   };
 
   const addToCart = (item: typeof menuItems[0]) => {
+    const display = getItemDisplay(item);
     setCart((prev) => {
       const existing = prev.find((cartItem) => cartItem.menu_item_id === item.id);
       if (existing) {
@@ -106,7 +121,7 @@ export default function POS() {
           name: item.name,
           price: Number(item.price),
           quantity: 1,
-          emoji: getItemEmoji(item),
+          emoji: display.value,
         },
       ];
     });
@@ -301,21 +316,28 @@ export default function POS() {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-                {filteredProducts.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => addToCart(item)}
-                    className="pos-button flex flex-col items-center justify-center gap-1.5 bg-card border-2 border-border hover:border-primary/50 hover:shadow-medium p-3 md:p-4"
-                  >
-                    <span className="text-2xl md:text-3xl">{getItemEmoji(item)}</span>
-                    <span className="font-semibold text-sm md:text-base text-center line-clamp-2 leading-tight">
-                      {item.name}
-                    </span>
-                    <span className="text-primary font-bold text-sm md:text-base">
-                      {Number(item.price).toLocaleString()} CFA
-                    </span>
-                  </button>
-                ))}
+                {filteredProducts.map((item) => {
+                  const display = getItemDisplay(item);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => addToCart(item)}
+                      className="pos-button flex flex-col items-center justify-center gap-1.5 bg-card border-2 border-border hover:border-primary/50 hover:shadow-medium p-3 md:p-4"
+                    >
+                      {display.type === "image" ? (
+                        <img src={display.value} alt={item.name} className="w-12 h-12 md:w-14 md:h-14 rounded-xl object-cover" />
+                      ) : (
+                        <span className="text-2xl md:text-3xl">{display.value}</span>
+                      )}
+                      <span className="font-semibold text-sm md:text-base text-center line-clamp-2 leading-tight">
+                        {item.name}
+                      </span>
+                      <span className="text-primary font-bold text-sm md:text-base">
+                        {Number(item.price).toLocaleString()} CFA
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

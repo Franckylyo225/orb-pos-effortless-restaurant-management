@@ -50,14 +50,36 @@ export function MenuItemForm({
   const [isUploading, setIsUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
+  // Détecter si l'image_url est un emoji ou une vraie URL
+  const isEmojiUrl = (url: string | null | undefined) => {
+    if (!url) return false;
+    return url.startsWith("emoji:") || foodEmojis.includes(url);
+  };
+  
+  const getInitialEmoji = () => {
+    if (initialData?.image_url?.startsWith("emoji:")) {
+      return initialData.image_url.replace("emoji:", "");
+    }
+    if (initialData?.image_url && foodEmojis.includes(initialData.image_url)) {
+      return initialData.image_url;
+    }
+    return "🍽️";
+  };
+  
+  const getInitialImageUrl = () => {
+    if (!initialData?.image_url) return "";
+    if (isEmojiUrl(initialData.image_url)) return "";
+    return initialData.image_url;
+  };
+  
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     description: initialData?.description || "",
     price: initialData?.price?.toString() || "",
     category_id: initialData?.category_id || "",
     cost_price: initialData?.cost_price?.toString() || "",
-    image_url: initialData?.image_url || "",
-    emoji: "🍽️",
+    image_url: getInitialImageUrl(),
+    emoji: getInitialEmoji(),
   });
 
   const handleImageUpload = async (file: File) => {
@@ -107,7 +129,7 @@ export function MenuItemForm({
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    setFormData(prev => ({ ...prev, emoji, image_url: "" }));
+    setFormData(prev => ({ ...prev, emoji, image_url: `emoji:${emoji}` }));
     setShowEmojiPicker(false);
   };
 
@@ -116,13 +138,16 @@ export function MenuItemForm({
     
     setIsSubmitting(true);
     try {
+      // Si pas d'image URL, utiliser l'emoji
+      const finalImageUrl = formData.image_url || `emoji:${formData.emoji}`;
+      
       await onSubmit({
         name: formData.name,
         description: formData.description || undefined,
         price: parseFloat(formData.price),
         category_id: formData.category_id || undefined,
         cost_price: formData.cost_price ? parseFloat(formData.cost_price) : 0,
-        image_url: formData.image_url || null,
+        image_url: finalImageUrl,
       });
     } finally {
       setIsSubmitting(false);
@@ -142,7 +167,7 @@ export function MenuItemForm({
           >
             {isUploading ? (
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : formData.image_url ? (
+            ) : formData.image_url && !formData.image_url.startsWith("emoji:") ? (
               <>
                 <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover" />
                 <button 
