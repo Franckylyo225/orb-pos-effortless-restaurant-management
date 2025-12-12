@@ -17,6 +17,7 @@ import {
   Loader2,
   CheckCircle,
   ChevronLeft,
+  MessageSquare,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -178,6 +179,16 @@ export default function POS() {
     setCart((prev) => prev.filter((item) => !(item.menu_item_id === menuItemId && item.variant === variant)));
   };
 
+  const updateItemNotes = (menuItemId: string, variant: string | undefined, notes: string) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.menu_item_id === menuItemId && item.variant === variant
+          ? { ...item, notes }
+          : item
+      )
+    );
+  };
+
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const discountAmount = (subtotal * discount) / 100;
   const total = subtotal - discountAmount;
@@ -192,6 +203,7 @@ export default function POS() {
         name: item.name,
         price: item.price,
         quantity: item.quantity,
+        notes: item.notes,
       })),
       selectedTable && selectedTable !== "counter" ? selectedTable : null,
       discount
@@ -456,37 +468,49 @@ export default function POS() {
                 {cart.map((item, index) => (
                   <div
                     key={`${item.menu_item_id}-${item.variant || 'base'}-${index}`}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-muted/50"
+                    className="p-3 rounded-xl bg-muted/50 space-y-2"
                   >
-                    <span className="text-2xl">{item.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{item.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.price.toLocaleString()} CFA
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{item.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {item.price.toLocaleString()} CFA
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateQuantity(item.menu_item_id!, item.variant, -1)}
+                          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <span className="w-8 text-center font-semibold">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(item.menu_item_id!, item.variant, 1)}
+                          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-colors"
+                        >
+                          <Plus size={16} />
+                        </button>
+                        <button
+                          onClick={() => removeItem(item.menu_item_id!, item.variant)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
+                    {/* Notes input */}
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => updateQuantity(item.menu_item_id!, item.variant, -1)}
-                        className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-destructive/20 hover:text-destructive transition-colors"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <span className="w-8 text-center font-semibold">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.menu_item_id!, item.variant, 1)}
-                        className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-colors"
-                      >
-                        <Plus size={16} />
-                      </button>
-                      <button
-                        onClick={() => removeItem(item.menu_item_id!, item.variant)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <MessageSquare size={14} className="text-muted-foreground shrink-0" />
+                      <Input
+                        placeholder="Note (ex: sans oignon, bien cuit...)"
+                        value={item.notes || ""}
+                        onChange={(e) => updateItemNotes(item.menu_item_id!, item.variant, e.target.value)}
+                        className="h-8 text-sm"
+                      />
                     </div>
                   </div>
                 ))}
