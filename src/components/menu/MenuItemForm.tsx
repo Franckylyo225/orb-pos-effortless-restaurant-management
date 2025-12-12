@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Upload, X, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Category, MenuItem } from "@/hooks/useMenu";
@@ -21,6 +22,11 @@ const foodEmojis = [
   "🌯", "🥪", "🍟", "🧆", "🥙", "🍖", "🦐", "🦞", "🍣", "🥧"
 ];
 
+interface Variant {
+  name: string;
+  price: number;
+}
+
 interface MenuItemFormProps {
   categories: Category[];
   onSubmit: (data: {
@@ -30,6 +36,7 @@ interface MenuItemFormProps {
     category_id?: string;
     cost_price?: number;
     image_url?: string | null;
+    variants?: Variant[];
   }) => Promise<void>;
   onCancel: () => void;
   initialData?: MenuItem | null;
@@ -72,6 +79,15 @@ export function MenuItemForm({
     return initialData.image_url;
   };
   
+  const getInitialVariants = (): Variant[] => {
+    if (initialData?.variants && Array.isArray(initialData.variants)) {
+      return (initialData.variants as unknown as Variant[]).filter(
+        (v): v is Variant => typeof v === 'object' && v !== null && 'name' in v && 'price' in v
+      );
+    }
+    return [];
+  };
+
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     description: initialData?.description || "",
@@ -81,6 +97,31 @@ export function MenuItemForm({
     image_url: getInitialImageUrl(),
     emoji: getInitialEmoji(),
   });
+
+  const [hasVariants, setHasVariants] = useState(getInitialVariants().length > 0);
+  const [variants, setVariants] = useState<Variant[]>(
+    getInitialVariants().length > 0 
+      ? getInitialVariants() 
+      : [{ name: "Petit", price: 0 }, { name: "Moyen", price: 0 }, { name: "Grand", price: 0 }]
+  );
+
+  const handleAddVariant = () => {
+    setVariants([...variants, { name: "", price: 0 }]);
+  };
+
+  const handleRemoveVariant = (index: number) => {
+    setVariants(variants.filter((_, i) => i !== index));
+  };
+
+  const handleVariantChange = (index: number, field: keyof Variant, value: string | number) => {
+    const newVariants = [...variants];
+    if (field === "price") {
+      newVariants[index][field] = parseFloat(value as string) || 0;
+    } else {
+      newVariants[index][field] = value as string;
+    }
+    setVariants(newVariants);
+  };
 
   const handleImageUpload = async (file: File) => {
     if (!file) return;
@@ -141,6 +182,11 @@ export function MenuItemForm({
       // Si pas d'image URL, utiliser l'emoji
       const finalImageUrl = formData.image_url || `emoji:${formData.emoji}`;
       
+      // Filtrer les variantes vides
+      const validVariants = hasVariants 
+        ? variants.filter(v => v.name.trim() && v.price > 0)
+        : [];
+      
       await onSubmit({
         name: formData.name,
         description: formData.description || undefined,
@@ -148,6 +194,7 @@ export function MenuItemForm({
         category_id: formData.category_id || undefined,
         cost_price: formData.cost_price ? parseFloat(formData.cost_price) : 0,
         image_url: finalImageUrl,
+        variants: validVariants,
       });
     } finally {
       setIsSubmitting(false);
@@ -254,8 +301,64 @@ export function MenuItemForm({
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
         />
       </div>
-      
-      {/* Price & Cost */}
+
+      {/* Variants Section */}
+      <div className="space-y-3 border-t pt-4">
+        <div className="flex items-center justify-between">
+          <Label className="text-base">Variantes de taille</Label>
+          <Switch
+            checked={hasVariants}
+            onCheckedChange={setHasVariants}
+          />
+        </div>
+        
+        {hasVariants && (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Définissez les tailles disponibles et leurs prix
+            </p>
+            
+            {variants.map((variant, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <Input
+                  placeholder="Taille (ex: Petit)"
+                  value={variant.name}
+                  onChange={(e) => handleVariantChange(index, "name", e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  type="number"
+                  placeholder="Prix"
+                  value={variant.price || ""}
+                  onChange={(e) => handleVariantChange(index, "price", e.target.value)}
+                  className="w-28"
+                />
+                <span className="text-sm text-muted-foreground">CFA</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveVariant(index)}
+                  className="shrink-0"
+                >
+                  <Trash2 size={16} className="text-destructive" />
+                </Button>
+              </div>
+            ))}
+            
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddVariant}
+              className="w-full mt-2"
+            >
+              <Plus size={16} className="mr-2" />
+              Ajouter une variante
+            </Button>
+          </div>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Prix (CFA) *</Label>
