@@ -14,7 +14,6 @@ import {
   CreditCard,
   ChefHat,
   History,
-  Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -23,7 +22,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useToast } from "@/hooks/use-toast";
 import { RestaurantSwitcher } from "./RestaurantSwitcher";
-import { supabase } from "@/integrations/supabase/client";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Vue d'ensemble", href: "/dashboard" },
@@ -44,26 +42,11 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
   const { restaurant, profile, loading: restaurantLoading } = useRestaurant();
   const { toast } = useToast();
-
-  // Check if user is super admin
-  useEffect(() => {
-    const checkSuperAdmin = async () => {
-      if (!user?.id) return;
-      const { data } = await supabase
-        .from("super_admins")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      setIsSuperAdmin(!!data);
-    };
-    checkSuperAdmin();
-  }, [user?.id]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -151,18 +134,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Restaurant Switcher & Logout */}
         <div className="p-3 border-t border-border space-y-2">
-          {isSuperAdmin && (
-            <Link
-              to="/saas-admin"
-              className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-xl font-medium transition-all duration-200 bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-600 hover:from-amber-500/20 hover:to-orange-500/20",
-                location.pathname === "/saas-admin" && "from-amber-500/30 to-orange-500/30"
-              )}
-            >
-              <Crown size={22} className="flex-shrink-0" />
-              {!collapsed && <span>SaaS Admin</span>}
-            </Link>
-          )}
           <RestaurantSwitcher collapsed={collapsed} />
           {!collapsed && (
             <Link
