@@ -419,13 +419,25 @@ interface MenuItemCardProps {
 }
 
 function MenuItemCard({ item, primaryColor, cardClasses, mutedTextClasses }: MenuItemCardProps) {
-  const hasVariants = item.variants && Array.isArray(item.variants) && item.variants.length > 0;
+  const validVariants = item.variants && Array.isArray(item.variants) 
+    ? item.variants.filter((v: any) => v && v.name && v.price > 0)
+    : [];
+  const hasVariants = validVariants.length > 0;
+
+  // Check if image_url is an emoji
+  const isEmoji = item.image_url?.startsWith("emoji:");
+  const emojiValue = isEmoji ? item.image_url?.replace("emoji:", "") : null;
+  const hasRealImage = item.image_url && !isEmoji;
 
   return (
     <div className={`${cardClasses} rounded-2xl border overflow-hidden hover:shadow-lg transition-shadow`}>
       <div className="flex">
         <div className="flex-1 p-4">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            {/* Emoji display if no real image */}
+            {emojiValue && !hasRealImage && (
+              <span className="text-3xl flex-shrink-0">{emojiValue}</span>
+            )}
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-lg">{item.name}</h3>
               {item.description && (
@@ -436,32 +448,38 @@ function MenuItemCard({ item, primaryColor, cardClasses, mutedTextClasses }: Men
             </div>
           </div>
 
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex flex-wrap gap-2">
-              {hasVariants ? (
-                item.variants.map((variant: any, index: number) => (
-                  <Badge 
-                    key={index} 
-                    variant="secondary" 
-                    className="text-sm"
-                    style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
-                  >
-                    {variant.name}: {Number(variant.price).toLocaleString()} FCFA
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-lg font-bold" style={{ color: primaryColor }}>
-                  {Number(item.price).toLocaleString()} FCFA
-                </span>
-              )}
-            </div>
+          <div className="mt-3">
+            {hasVariants ? (
+              <div className="space-y-2">
+                {/* Prix de base */}
+                <div className="flex items-center justify-between py-1.5 border-b border-dashed border-border/50">
+                  <span className="text-sm font-medium">Standard</span>
+                  <span className="font-bold" style={{ color: primaryColor }}>
+                    {Number(item.price).toLocaleString()} FCFA
+                  </span>
+                </div>
+                {/* Variantes */}
+                {validVariants.map((variant: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between py-1.5 border-b border-dashed border-border/50 last:border-0">
+                    <span className="text-sm font-medium">{variant.name}</span>
+                    <span className="font-bold" style={{ color: primaryColor }}>
+                      {Number(variant.price).toLocaleString()} FCFA
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-lg font-bold" style={{ color: primaryColor }}>
+                {Number(item.price).toLocaleString()} FCFA
+              </span>
+            )}
           </div>
         </div>
 
-        {item.image_url && (
+        {hasRealImage && (
           <div className="w-28 h-28 md:w-36 md:h-36 flex-shrink-0">
             <img
-              src={item.image_url}
+              src={item.image_url!}
               alt={item.name}
               className="w-full h-full object-cover"
             />
