@@ -86,7 +86,14 @@ export default function Menu() {
   };
 
   const getItemDisplay = (item: MenuItem) => {
-    if (item.image_url) {
+    // Check if image_url is an emoji format
+    if (item.image_url?.startsWith("emoji:")) {
+      const emoji = item.image_url.replace("emoji:", "");
+      return <span className="text-4xl">{emoji}</span>;
+    }
+    
+    // Real image URL
+    if (item.image_url && !item.image_url.startsWith("emoji:")) {
       return (
         <img 
           src={item.image_url} 
