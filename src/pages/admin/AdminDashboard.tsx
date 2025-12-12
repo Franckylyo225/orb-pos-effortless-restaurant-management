@@ -5,14 +5,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
-  Shield, LogOut, Store, Users, CreditCard, TrendingUp, 
-  Building2, ChefHat, UtensilsCrossed, Loader2 
+  Shield, LogOut, Store, CreditCard, TrendingUp, 
+  Building2, ChefHat, UtensilsCrossed, Loader2, UserPlus, Trash2, Users
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface RestaurantStats {
   id: string;
@@ -28,6 +32,14 @@ interface RestaurantStats {
   created_at: string | null;
 }
 
+interface SuperAdmin {
+  id: string;
+  user_id: string;
+  created_at: string;
+  email?: string;
+  full_name?: string;
+}
+
 interface DashboardStats {
   totalRestaurants: number;
   totalOrders: number;
@@ -41,6 +53,7 @@ const AdminDashboard = () => {
   const { user, isAdmin, loading, signOut } = useAdminAuth();
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState<RestaurantStats[]>([]);
+  const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalRestaurants: 0,
     totalOrders: 0,
@@ -50,12 +63,42 @@ const AdminDashboard = () => {
     premiumPlan: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || !isAdmin)) {
       navigate('/admin/login');
     }
   }, [user, isAdmin, loading, navigate]);
+
+  const fetchSuperAdmins = async () => {
+    const { data: adminsData, error: adminsError } = await supabase
+      .from('super_admins')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!adminsError && adminsData) {
+      // Fetch profiles for each admin
+      const adminsWithProfiles = await Promise.all(
+        adminsData.map(async (admin) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', admin.user_id)
+            .maybeSingle();
+          
+          return {
+            ...admin,
+            email: profile?.email || 'Email non disponible',
+            full_name: profile?.full_name || 'Nom non disponible',
+          };
+        })
+      );
+      setSuperAdmins(adminsWithProfiles);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,11 +122,85 @@ const AdminDashboard = () => {
         };
         setStats(calculatedStats);
       }
+
+      await fetchSuperAdmins();
       setIsLoading(false);
     };
 
     fetchData();
   }, [isAdmin]);
+
+  const handleAddSuperAdmin = async () => {
+    if (!newAdminEmail.trim()) {
+      toast.error('Veuillez entrer un email');
+      return;
+    }
+
+    setIsAddingAdmin(true);
+
+    // Find user by email in profiles
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .eq('email', newAdminEmail.trim())
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      toast.error('Utilisateur non trouvé avec cet email');
+      setIsAddingAdmin(false);
+      return;
+    }
+
+    // Check if already admin
+    const { data: existingAdmin } = await supabase
+      .from('super_admins')
+      .select('id')
+      .eq('user_id', profile.id)
+      .maybeSingle();
+
+    if (existingAdmin) {
+      toast.error('Cet utilisateur est déjà super admin');
+      setIsAddingAdmin(false);
+      return;
+    }
+
+    // Add as super admin
+    const { error: insertError } = await supabase
+      .from('super_admins')
+      .insert({ user_id: profile.id });
+
+    if (insertError) {
+      toast.error('Erreur lors de l\'ajout du super admin');
+      setIsAddingAdmin(false);
+      return;
+    }
+
+    toast.success(`${profile.full_name || profile.email} ajouté comme super admin`);
+    setNewAdminEmail('');
+    setDialogOpen(false);
+    setIsAddingAdmin(false);
+    fetchSuperAdmins();
+  };
+
+  const handleRemoveSuperAdmin = async (adminId: string, adminEmail: string) => {
+    if (superAdmins.length <= 1) {
+      toast.error('Impossible de supprimer le dernier super admin');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('super_admins')
+      .delete()
+      .eq('id', adminId);
+
+    if (error) {
+      toast.error('Erreur lors de la suppression');
+      return;
+    }
+
+    toast.success(`${adminEmail} supprimé des super admins`);
+    fetchSuperAdmins();
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -191,6 +308,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="subscriptions" className="data-[state=active]:bg-primary">
               <CreditCard className="w-4 h-4 mr-2" />
               Abonnements
+            </TabsTrigger>
+            <TabsTrigger value="admins" className="data-[state=active]:bg-primary">
+              <Users className="w-4 h-4 mr-2" />
+              Super Admins
             </TabsTrigger>
           </TabsList>
 
@@ -301,6 +422,104 @@ const AdminDashboard = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="admins">
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-white">Super Administrateurs</CardTitle>
+                  <CardDescription className="text-slate-400">
+                    Gérez les utilisateurs ayant accès au dashboard admin
+                  </CardDescription>
+                </div>
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-2">
+                      <UserPlus className="w-4 h-4" />
+                      Ajouter un admin
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-slate-800 border-slate-700">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Ajouter un super admin</DialogTitle>
+                      <DialogDescription className="text-slate-400">
+                        Entrez l'email d'un utilisateur existant pour lui donner accès au dashboard admin.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-slate-300">Email de l'utilisateur</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="utilisateur@example.com"
+                          value={newAdminEmail}
+                          onChange={(e) => setNewAdminEmail(e.target.value)}
+                          className="bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setDialogOpen(false)} className="border-slate-600 text-slate-300">
+                        Annuler
+                      </Button>
+                      <Button onClick={handleAddSuperAdmin} disabled={isAddingAdmin}>
+                        {isAddingAdmin ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Ajout...
+                          </>
+                        ) : (
+                          'Ajouter'
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-700 hover:bg-slate-700/50">
+                        <TableHead className="text-slate-300">Nom</TableHead>
+                        <TableHead className="text-slate-300">Email</TableHead>
+                        <TableHead className="text-slate-300">Ajouté le</TableHead>
+                        <TableHead className="text-slate-300 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {superAdmins.map((admin) => (
+                        <TableRow key={admin.id} className="border-slate-700 hover:bg-slate-700/50">
+                          <TableCell className="font-medium text-white">
+                            <div className="flex items-center gap-2">
+                              <Shield className="w-4 h-4 text-primary" />
+                              {admin.full_name}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-300">{admin.email}</TableCell>
+                          <TableCell className="text-slate-400 text-sm">
+                            {format(new Date(admin.created_at), 'dd MMM yyyy', { locale: fr })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveSuperAdmin(admin.id, admin.email || '')}
+                              disabled={superAdmins.length <= 1 || admin.user_id === user?.id}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
