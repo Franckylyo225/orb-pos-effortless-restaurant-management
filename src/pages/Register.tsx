@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/integrations/supabase/client";
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
+import { signUpSchema, getAuthErrorMessage } from "@/lib/validations/auth";
 
 type Step = "account" | "otp" | "restaurant" | "onboarding";
 
@@ -75,19 +77,37 @@ export default function Register() {
     }
   };
 
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+
   const handleAccountSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordErrors([]);
+
+    // Validate with Zod schema
+    const validation = signUpSchema.safeParse({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password,
+    });
+
+    if (!validation.success) {
+      const errors = validation.error.errors.map((err) => err.message);
+      setPasswordErrors(errors);
+      toast({
+        title: "Validation échouée",
+        description: errors[0],
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     const { error } = await signUp(formData.email, formData.password, formData.name);
 
     if (error) {
-      let message = "Une erreur est survenue lors de l'inscription.";
-      if (error.message.includes("already registered")) {
-        message = "Cet email est déjà utilisé. Veuillez vous connecter.";
-      } else if (error.message.includes("Password")) {
-        message = "Le mot de passe doit contenir au moins 6 caractères.";
-      }
+      const message = getAuthErrorMessage(error);
       toast({
         title: "Erreur d'inscription",
         description: message,
@@ -351,11 +371,11 @@ export default function Register() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      placeholder="Minimum 6 caractères"
+                      placeholder="Minimum 8 caractères"
                       value={formData.password}
                       onChange={(e) => updateFormData("password", e.target.value)}
                       className="pl-10 pr-10 h-12"
-                      minLength={6}
+                      minLength={8}
                       required
                     />
                     <button
@@ -366,6 +386,7 @@ export default function Register() {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  <PasswordStrengthIndicator password={formData.password} />
                 </div>
 
                 <Button
