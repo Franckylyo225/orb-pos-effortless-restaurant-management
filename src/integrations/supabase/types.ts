@@ -62,6 +62,33 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          attempt_count: number | null
+          created_at: string | null
+          email: string
+          id: string
+          last_attempt_at: string | null
+          locked_until: string | null
+        }
+        Insert: {
+          attempt_count?: number | null
+          created_at?: string | null
+          email: string
+          id?: string
+          last_attempt_at?: string | null
+          locked_until?: string | null
+        }
+        Update: {
+          attempt_count?: number | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          last_attempt_at?: string | null
+          locked_until?: string | null
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           category_id: string | null
@@ -853,6 +880,7 @@ export type Database = {
       }
     }
     Functions: {
+      check_account_locked: { Args: { user_email: string }; Returns: Json }
       get_subscription_restaurant_limit: {
         Args: { plan_name: string }
         Returns: number
@@ -867,6 +895,8 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      record_failed_login: { Args: { user_email: string }; Returns: Json }
+      reset_login_attempts: { Args: { user_email: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "manager" | "serveur" | "caissier"

@@ -3,16 +3,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, ArrowLeft, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Mail, Lock, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthErrorMessage } from "@/lib/validations/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+interface LockStatus {
+  locked: boolean;
+  locked_until?: string;
+  attempts: number;
+  max_attempts: number;
+  remaining_minutes?: number;
+}
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [lockStatus, setLockStatus] = useState<LockStatus | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signIn, user, loading } = useAuth();
@@ -24,22 +35,90 @@ export default function Login() {
     }
   }, [user, loading, navigate]);
 
+  // Check lock status when email changes
+  useEffect(() => {
+    const checkLock = async () => {
+      if (!email || !email.includes("@")) return;
+      
+      const { data, error } = await supabase.rpc("check_account_locked", {
+        user_email: email,
+      });
+      
+      if (!error && data) {
+        setLockStatus(data as unknown as LockStatus);
+      }
+    };
+
+    const debounce = setTimeout(checkLock, 500);
+    return () => clearTimeout(debounce);
+  }, [email]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if account is locked before attempting login
+    const { data: lockCheck } = await supabase.rpc("check_account_locked", {
+      user_email: email,
+    });
+
+    const lockData = lockCheck as unknown as LockStatus | null;
+
+    if (lockData?.locked) {
+      const minutes = Math.ceil(lockData.remaining_minutes || 0);
+      toast({
+        title: "Compte temporairement verrouillé",
+        description: `Trop de tentatives échouées. Réessayez dans ${minutes} minute${minutes > 1 ? "s" : ""}.`,
+        variant: "destructive",
+      });
+      setLockStatus(lockData);
+      return;
+    }
+
     setIsLoading(true);
 
     const { error } = await signIn(email, password);
 
     if (error) {
-      const message = getAuthErrorMessage(error);
-      toast({
-        title: "Erreur de connexion",
-        description: message,
-        variant: "destructive",
+      // Record the failed attempt
+      const { data: attemptData } = await supabase.rpc("record_failed_login", {
+        user_email: email,
       });
+
+      const attemptResult = attemptData as unknown as LockStatus | null;
+
+      if (attemptResult) {
+        setLockStatus(attemptResult);
+        
+        if (attemptResult.locked) {
+          toast({
+            title: "Compte verrouillé",
+            description: "Trop de tentatives échouées. Votre compte est verrouillé pour 15 minutes.",
+            variant: "destructive",
+          });
+        } else {
+          const remaining = attemptResult.max_attempts - attemptResult.attempts;
+          const message = getAuthErrorMessage(error);
+          toast({
+            title: "Erreur de connexion",
+            description: `${message} (${remaining} tentative${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""})`,
+            variant: "destructive",
+          });
+        }
+      } else {
+        const message = getAuthErrorMessage(error);
+        toast({
+          title: "Erreur de connexion",
+          description: message,
+          variant: "destructive",
+        });
+      }
+
       setIsLoading(false);
       return;
     }
+
+    // Reset attempts on successful login
+    await supabase.rpc("reset_login_attempts", { user_email: email });
 
     toast({
       title: "Connexion réussie",
@@ -49,6 +128,8 @@ export default function Login() {
     navigate("/dashboard");
     setIsLoading(false);
   };
+
+  const isAccountLocked = lockStatus?.locked ?? false;
 
   if (loading) {
     return (
@@ -90,6 +171,30 @@ export default function Login() {
             </p>
           </div>
 
+          {/* Lock Warning */}
+          {isAccountLocked && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Compte temporairement verrouillé. Réessayez dans{" "}
+                {Math.ceil(lockStatus?.remaining_minutes || 15)} minute
+                {Math.ceil(lockStatus?.remaining_minutes || 15) > 1 ? "s" : ""}.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Attempts Warning */}
+          {!isAccountLocked && lockStatus && lockStatus.attempts > 0 && (
+            <Alert className="mb-6 border-yellow-500/50 bg-yellow-500/10">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-700 dark:text-yellow-400">
+                {lockStatus.max_attempts - lockStatus.attempts} tentative
+                {lockStatus.max_attempts - lockStatus.attempts > 1 ? "s" : ""} restante
+                {lockStatus.max_attempts - lockStatus.attempts > 1 ? "s" : ""} avant verrouillage.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -104,6 +209,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 h-12"
                   required
+                  disabled={isAccountLocked}
                 />
               </div>
             </div>
@@ -128,11 +234,13 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 h-12"
                   required
+                  disabled={isAccountLocked}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  disabled={isAccountLocked}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -144,9 +252,9 @@ export default function Login() {
               variant="hero"
               size="lg"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || isAccountLocked}
             >
-              {isLoading ? "Connexion..." : "Se connecter"}
+              {isLoading ? "Connexion..." : isAccountLocked ? "Compte verrouillé" : "Se connecter"}
             </Button>
           </form>
 
