@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, ArrowLeft, Mail, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthErrorMessage } from "@/lib/validations/auth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -30,12 +31,7 @@ export default function Login() {
     const { error } = await signIn(email, password);
 
     if (error) {
-      let message = "Une erreur est survenue lors de la connexion.";
-      if (error.message === "Invalid login credentials") {
-        message = "Email ou mot de passe incorrect.";
-      } else if (error.message.includes("Email not confirmed")) {
-        message = "Veuillez confirmer votre email avant de vous connecter.";
-      }
+      const message = getAuthErrorMessage(error);
       toast({
         title: "Erreur de connexion",
         description: message,
