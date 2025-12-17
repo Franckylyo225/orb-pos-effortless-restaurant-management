@@ -44,6 +44,7 @@ import { useSubscriptionFeatures } from "@/hooks/useSubscriptionFeatures";
 import { StockAdjustmentDialog } from "@/components/stock/StockAdjustmentDialog";
 import { LowStockAlert } from "@/components/stock/LowStockAlert";
 import { StockMovementHistory } from "@/components/stock/StockMovementHistory";
+import { Card, CardContent } from "@/components/ui/card";
 
 function StockContent() {
   const { suppliers, products, lowStockProducts, loading, addSupplier, addProduct, addStockMovement, deleteProduct } = useStock();
@@ -313,6 +314,70 @@ function StockContent() {
 
         {/* Low Stock Alert */}
         <LowStockAlert />
+
+        {/* Stock Statistics */}
+        {products.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total produits</p>
+                    <p className="text-2xl font-bold">{products.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Valeur totale</p>
+                    <p className="text-2xl font-bold">
+                      {products.reduce((sum, p) => sum + (p.current_stock * (p.cost_per_unit || 0)), 0).toLocaleString()} <span className="text-sm font-normal">FCFA</span>
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-500/10 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Stock bas</p>
+                    <p className="text-2xl font-bold">
+                      {products.filter(p => p.current_stock > 0 && p.current_stock <= p.min_stock_threshold).length}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-destructive/10 rounded-lg">
+                    <TrendingDown className="h-5 w-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">En rupture</p>
+                    <p className="text-2xl font-bold">
+                      {products.filter(p => p.current_stock <= 0).length}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <Tabs defaultValue="products" className="space-y-6">
           <TabsList>
