@@ -29,6 +29,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, BookOpen, AlertTriangle, ArrowRight } from "lucide-react";
 import { useRecipes, RecipeIngredient, convertUnit, areUnitsCompatible, getConversionDisplay } from "@/hooks/useRecipes";
 import { useStock, StockProduct } from "@/hooks/useStock";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Get compatible units based on a stock product's unit
+function getCompatibleUnits(stockUnit: string): string[] {
+  const massUnits = ["kg", "g"];
+  const volumeUnits = ["L", "ml"];
+  
+  if (massUnits.includes(stockUnit)) return massUnits;
+  if (volumeUnits.includes(stockUnit)) return volumeUnits;
+  return [stockUnit]; // pièce or other units only compatible with themselves
+}
 
 interface RecipeEditorProps {
   menuItemId: string;
@@ -81,6 +92,10 @@ export function RecipeEditor({ menuItemId, menuItemName, sellingPrice }: RecipeE
   const availableProducts = products.filter(
     (p) => !recipe.some((r) => r.stock_product_id === p.id)
   );
+
+  const selectedProductData = products.find((p) => p.id === selectedProduct);
+  const compatibleUnits = selectedProductData ? getCompatibleUnits(selectedProductData.unit) : [];
+  const isUnitCompatible = !selectedProduct || !unit || areUnitsCompatible(unit, selectedProductData?.unit || "");
 
   const hasLowStockIngredient = recipe.some((ing) => {
     if (!ing.stock_product) return false;
@@ -193,23 +208,49 @@ export function RecipeEditor({ menuItemId, menuItemName, sellingPrice }: RecipeE
                       </div>
                       <div className="space-y-2">
                         <Label>Unité</Label>
-                        <Select value={unit} onValueChange={setUnit}>
+                        <Select 
+                          value={unit} 
+                          onValueChange={setUnit}
+                          disabled={!selectedProduct}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Sélectionner" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="kg">kg</SelectItem>
-                            <SelectItem value="g">g</SelectItem>
-                            <SelectItem value="L">L</SelectItem>
-                            <SelectItem value="ml">ml</SelectItem>
-                            <SelectItem value="pièce">pièce</SelectItem>
+                            {compatibleUnits.length > 0 ? (
+                              compatibleUnits.map((u) => (
+                                <SelectItem key={u} value={u}>{u}</SelectItem>
+                              ))
+                            ) : (
+                              <>
+                                <SelectItem value="kg">kg</SelectItem>
+                                <SelectItem value="g">g</SelectItem>
+                                <SelectItem value="L">L</SelectItem>
+                                <SelectItem value="ml">ml</SelectItem>
+                                <SelectItem value="pièce">pièce</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
+                        {selectedProductData && (
+                          <p className="text-xs text-muted-foreground">
+                            Stock en: {selectedProductData.unit}
+                          </p>
+                        )}
                       </div>
                     </div>
+                    {selectedProduct && unit && !isUnitCompatible && (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          Unité incompatible: {unit} ne peut pas être converti en {selectedProductData?.unit}. 
+                          Utilisez une unité compatible ({compatibleUnits.join(", ")}).
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <Button
                       onClick={handleAddIngredient}
-                      disabled={!selectedProduct || !quantity || isSubmitting}
+                      disabled={!selectedProduct || !quantity || isSubmitting || !isUnitCompatible}
                       className="w-full"
                     >
                       {isSubmitting ? "Ajout..." : "Ajouter"}
