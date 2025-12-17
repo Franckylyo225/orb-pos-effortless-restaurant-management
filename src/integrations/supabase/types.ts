@@ -465,6 +465,54 @@ export type Database = {
         }
         Relationships: []
       }
+      recipe_ingredients: {
+        Row: {
+          created_at: string
+          id: string
+          menu_item_id: string
+          notes: string | null
+          quantity: number
+          stock_product_id: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          menu_item_id: string
+          notes?: string | null
+          quantity?: number
+          stock_product_id: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          menu_item_id?: string
+          notes?: string | null
+          quantity?: number
+          stock_product_id?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_stock_product_id_fkey"
+            columns: ["stock_product_id"]
+            isOneToOne: false
+            referencedRelation: "stock_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           address: string | null
@@ -880,7 +928,16 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_recipe_cost: {
+        Args: { p_menu_item_id: string }
+        Returns: number
+      }
       check_account_locked: { Args: { user_email: string }; Returns: Json }
+      check_stock_availability: { Args: never; Returns: Json }
+      decrement_stock_on_sale: {
+        Args: { p_order_id: string; p_user_id?: string }
+        Returns: Json
+      }
       get_subscription_restaurant_limit: {
         Args: { plan_name: string }
         Returns: number

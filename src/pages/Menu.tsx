@@ -13,6 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useMenu, MenuItem } from "@/hooks/useMenu";
+import { useRecipes } from "@/hooks/useRecipes";
 import {
   Dialog,
   DialogContent,
@@ -22,9 +23,12 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { MenuItemForm } from "@/components/menu/MenuItemForm";
+import { RecipeEditor } from "@/components/recipes/RecipeEditor";
+import { RecipeCostBadge } from "@/components/recipes/RecipeCostBadge";
 
 export default function Menu() {
   const { categories, menuItems, loading, addCategory, addMenuItem, updateMenuItem, toggleAvailability, deleteMenuItem } = useMenu();
+  const { loading: recipesLoading } = useRecipes();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showAddItem, setShowAddItem] = useState(false);
@@ -115,7 +119,7 @@ export default function Menu() {
     return <span className="text-4xl">{emoji}</span>;
   };
 
-  if (loading) {
+  if (loading || recipesLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
@@ -274,9 +278,19 @@ export default function Menu() {
                   </p>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-xl font-bold text-primary">
-                    {Number(item.price).toLocaleString()} CFA
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-primary">
+                      {Number(item.price).toLocaleString()} CFA
+                    </span>
+                    <RecipeCostBadge menuItemId={item.id} sellingPrice={Number(item.price)} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                  <RecipeEditor
+                    menuItemId={item.id}
+                    menuItemName={item.name}
+                    sellingPrice={Number(item.price)}
+                  />
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
