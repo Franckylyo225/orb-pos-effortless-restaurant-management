@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/tabs";
 import { FeatureGate } from "@/components/subscription";
 import { useSubscriptionFeatures } from "@/hooks/useSubscriptionFeatures";
+import { StockAdjustmentDialog } from "@/components/stock/StockAdjustmentDialog";
+import { LowStockAlert } from "@/components/stock/LowStockAlert";
 
 function StockContent() {
   const { suppliers, products, lowStockProducts, loading, addSupplier, addProduct, addStockMovement, deleteProduct } = useStock();
@@ -296,19 +298,7 @@ function StockContent() {
         </div>
 
         {/* Low Stock Alert */}
-        {lowStockProducts.length > 0 && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-destructive/20 text-destructive flex items-center justify-center flex-shrink-0">
-              <AlertTriangle size={20} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-destructive">Stock faible</h3>
-              <p className="text-sm text-muted-foreground">
-                {lowStockProducts.length} produit(s) en dessous du seuil d'alerte: {lowStockProducts.map(p => p.name).join(", ")}
-              </p>
-            </div>
-          </div>
-        )}
+        <LowStockAlert />
 
         <Tabs defaultValue="products" className="space-y-6">
           <TabsList>
@@ -411,6 +401,9 @@ function StockContent() {
                             <Trash2 size={18} />
                           </Button>
                         </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <StockAdjustmentDialog product={product} />
                       </div>
                     </div>
                   </div>

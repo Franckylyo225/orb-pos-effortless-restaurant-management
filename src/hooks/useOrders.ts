@@ -288,6 +288,17 @@ export function useOrders() {
       return { error: paymentError };
     }
 
+    // Decrement stock based on recipe ingredients
+    const { error: stockError } = await supabase.rpc("decrement_stock_on_sale", {
+      p_order_id: orderId,
+      p_user_id: user?.id || null,
+    });
+
+    if (stockError) {
+      console.error("Error decrementing stock:", stockError);
+      // Don't fail the payment, just log the error
+    }
+
     // Update order status
     await updateOrderStatus(orderId, "paid");
 
