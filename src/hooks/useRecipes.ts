@@ -29,6 +29,54 @@ export interface RecipeWithCost {
   margin_percent: number;
 }
 
+// Unit conversion function - mirrors the SQL convert_unit function
+export function convertUnit(quantity: number, fromUnit: string, toUnit: string): number {
+  // Same unit, no conversion needed
+  if (fromUnit === toUnit) {
+    return quantity;
+  }
+
+  // Mass conversions: g <-> kg
+  if (fromUnit === "g" && toUnit === "kg") {
+    return quantity / 1000;
+  }
+  if (fromUnit === "kg" && toUnit === "g") {
+    return quantity * 1000;
+  }
+
+  // Volume conversions: ml <-> L
+  if (fromUnit === "ml" && toUnit === "L") {
+    return quantity / 1000;
+  }
+  if (fromUnit === "L" && toUnit === "ml") {
+    return quantity * 1000;
+  }
+
+  // Incompatible units, return original
+  return quantity;
+}
+
+// Check if two units are compatible for conversion
+export function areUnitsCompatible(unit1: string, unit2: string): boolean {
+  const massUnits = ["g", "kg"];
+  const volumeUnits = ["ml", "L"];
+  
+  if (unit1 === unit2) return true;
+  if (massUnits.includes(unit1) && massUnits.includes(unit2)) return true;
+  if (volumeUnits.includes(unit1) && volumeUnits.includes(unit2)) return true;
+  
+  return false;
+}
+
+// Get converted quantity display string
+export function getConversionDisplay(quantity: number, fromUnit: string, toUnit: string): string | null {
+  if (fromUnit === toUnit || !areUnitsCompatible(fromUnit, toUnit)) {
+    return null;
+  }
+  const converted = convertUnit(quantity, fromUnit, toUnit);
+  return `= ${converted.toLocaleString()} ${toUnit}`;
+}
+
 export function useRecipes() {
   const { restaurant } = useRestaurant();
   const [recipes, setRecipes] = useState<Map<string, RecipeIngredient[]>>(new Map());
@@ -183,7 +231,10 @@ export function useRecipes() {
     const ingredients = recipes.get(menuItemId) || [];
     return ingredients.reduce((sum, ing) => {
       const costPerUnit = ing.stock_product?.cost_per_unit || 0;
-      return sum + ing.quantity * costPerUnit;
+      const stockUnit = ing.stock_product?.unit || ing.unit;
+      // Convert recipe quantity to stock unit before calculating cost
+      const convertedQuantity = convertUnit(ing.quantity, ing.unit, stockUnit);
+      return sum + convertedQuantity * costPerUnit;
     }, 0);
   };
 

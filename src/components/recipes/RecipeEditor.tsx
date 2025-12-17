@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2, BookOpen, AlertTriangle } from "lucide-react";
-import { useRecipes, RecipeIngredient } from "@/hooks/useRecipes";
+import { Plus, Trash2, BookOpen, AlertTriangle, ArrowRight } from "lucide-react";
+import { useRecipes, RecipeIngredient, convertUnit, areUnitsCompatible, getConversionDisplay } from "@/hooks/useRecipes";
 import { useStock, StockProduct } from "@/hooks/useStock";
 
 interface RecipeEditorProps {
@@ -82,9 +82,12 @@ export function RecipeEditor({ menuItemId, menuItemName, sellingPrice }: RecipeE
     (p) => !recipe.some((r) => r.stock_product_id === p.id)
   );
 
-  const hasLowStockIngredient = recipe.some(
-    (ing) => ing.stock_product && ing.stock_product.current_stock < ing.quantity
-  );
+  const hasLowStockIngredient = recipe.some((ing) => {
+    if (!ing.stock_product) return false;
+    const stockUnit = ing.stock_product.unit;
+    const convertedQty = convertUnit(ing.quantity, ing.unit, stockUnit);
+    return ing.stock_product.current_stock < convertedQty;
+  });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -235,11 +238,16 @@ export function RecipeEditor({ menuItemId, menuItemName, sellingPrice }: RecipeE
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recipe.map((ing) => {
+                {recipe.map((ing) => {
+                    const stockUnit = ing.stock_product?.unit || ing.unit;
                     const costPerUnit = ing.stock_product?.cost_per_unit || 0;
-                    const totalCost = ing.quantity * costPerUnit;
-                    const isLowStock = ing.stock_product && ing.stock_product.current_stock < ing.quantity;
+                    // Convert to stock unit for accurate cost calculation
+                    const convertedQty = convertUnit(ing.quantity, ing.unit, stockUnit);
+                    const totalCost = convertedQty * costPerUnit;
+                    const conversionDisplay = getConversionDisplay(ing.quantity, ing.unit, stockUnit);
+                    const isLowStock = ing.stock_product && ing.stock_product.current_stock < convertedQty;
                     const isOutOfStock = ing.stock_product && ing.stock_product.current_stock <= 0;
+                    const unitsCompatible = areUnitsCompatible(ing.unit, stockUnit);
 
                     return (
                       <TableRow key={ing.id}>
@@ -254,26 +262,39 @@ export function RecipeEditor({ menuItemId, menuItemName, sellingPrice }: RecipeE
                                 Stock bas
                               </Badge>
                             )}
+                            {!unitsCompatible && (
+                              <Badge variant="outline" className="text-xs text-destructive border-destructive">
+                                Unités incompatibles
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0.01"
-                              value={ing.quantity}
-                              onChange={(e) => handleUpdateQuantity(ing, parseFloat(e.target.value))}
-                              className="w-20 text-right"
-                            />
-                            <span className="text-muted-foreground text-sm w-12">{ing.unit}</span>
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={ing.quantity}
+                                onChange={(e) => handleUpdateQuantity(ing, parseFloat(e.target.value))}
+                                className="w-20 text-right"
+                              />
+                              <span className="text-muted-foreground text-sm w-12">{ing.unit}</span>
+                            </div>
+                            {conversionDisplay && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <ArrowRight size={10} />
+                                {conversionDisplay}
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className={`text-right ${isLowStock ? 'text-destructive' : ''}`}>
                           {ing.stock_product?.current_stock.toLocaleString()} {ing.stock_product?.unit}
                         </TableCell>
                         <TableCell className="text-right">
-                          {costPerUnit.toLocaleString()} FCFA
+                          {costPerUnit.toLocaleString()} FCFA/{stockUnit}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {totalCost.toLocaleString()} FCFA
