@@ -24,6 +24,7 @@ import Menu from "./pages/Menu";
 import Stock from "./pages/Stock";
 import Settings from "./pages/Settings";
 import Subscription from "./pages/Subscription";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import Onboarding from "./pages/Onboarding";
 import OrderHistory from "./pages/OrderHistory";
 import Reports from "./pages/Reports";
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="/dashboard/stock" element={<Stock />} />
               <Route path="/dashboard/settings" element={<Settings />} />
               <Route path="/dashboard/subscription" element={<Subscription />} />
+              <Route path="/dashboard/subscription/success" element={<PaymentSuccess />} />
               <Route path="/dashboard/orders" element={<OrderHistory />} />
               <Route path="/dashboard/reports" element={<Reports />} />
               <Route path="/dashboard/team" element={<Team />} />

@@ -4,13 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { useSubscription } from "@/hooks/useSubscription";
 import { 
-  useSubscriptionFeatures, 
-  FEATURES, 
   PLAN_LIMITS,
   SubscriptionPlan 
 } from "@/hooks/useSubscriptionFeatures";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { 
@@ -20,9 +18,10 @@ import {
   Building2,
   Loader2,
   Star,
-  Users,
-  Store,
-  LayoutGrid
+  Clock,
+  AlertTriangle,
+  ExternalLink,
+  CreditCard,
 } from "lucide-react";
 
 interface Plan {
@@ -107,48 +106,43 @@ const plans: Plan[] = [
 
 export default function Subscription() {
   const { restaurant, loading } = useRestaurant();
+  const { 
+    subscription, 
+    isTrialing, 
+    trialDaysRemaining, 
+    isTrialExpired,
+    isActive,
+    effectivePlan,
+    processingPayment,
+    createPayment,
+    loading: subscriptionLoading,
+  } = useSubscription();
   const { toast } = useToast();
-  const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   const currentPlan = restaurant?.subscription_plan || "basic";
 
   const handleSelectPlan = async (planId: string) => {
-    if (!restaurant) return;
-    if (planId === currentPlan) return;
+    if (planId === currentPlan && isActive) return;
 
-    setUpgrading(planId);
+    setSelectedPlan(planId);
     
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const result = await createPayment(planId);
 
-    try {
-      const { error } = await supabase
-        .from("restaurants")
-        .update({ subscription_plan: planId })
-        .eq("id", restaurant.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Abonnement mis à jour !",
-        description: `Vous êtes maintenant sur le plan ${plans.find(p => p.id === planId)?.name}.`,
-      });
-
-      // Reload the page to reflect changes
-      window.location.reload();
-    } catch (error) {
-      console.error("Error updating subscription:", error);
+    if (result.success && result.paymentUrl) {
+      // Redirect to CinetPay payment page
+      window.location.href = result.paymentUrl;
+    } else {
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour l'abonnement.",
+        description: result.error || "Impossible de créer le paiement.",
         variant: "destructive",
       });
-    } finally {
-      setUpgrading(null);
+      setSelectedPlan(null);
     }
   };
 
-  if (loading) {
+  if (loading || subscriptionLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
@@ -169,29 +163,81 @@ export default function Subscription() {
           </p>
         </div>
 
-        {/* Current Plan Banner */}
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center justify-between p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Star className="h-6 w-6 text-primary" />
+        {/* Trial Status Banner */}
+        {isTrialing && !isTrialExpired && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex items-center justify-between p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="font-display font-bold text-xl">Essai gratuit - Plan Pro</p>
+                  <p className="text-muted-foreground">
+                    {trialDaysRemaining > 0 
+                      ? `Il vous reste ${trialDaysRemaining} jour${trialDaysRemaining > 1 ? "s" : ""} d'essai gratuit`
+                      : "Votre essai se termine aujourd'hui"
+                    }
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Plan actuel</p>
-                <p className="font-display font-bold text-xl capitalize">{currentPlan}</p>
+              <Badge variant="secondary" className="text-sm">
+                <Clock className="h-3 w-3 mr-1" />
+                {trialDaysRemaining} jour{trialDaysRemaining > 1 ? "s" : ""} restant{trialDaysRemaining > 1 ? "s" : ""}
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Trial Expired Banner */}
+        {isTrialing && isTrialExpired && (
+          <Card className="border-destructive/20 bg-destructive/5">
+            <CardContent className="flex items-center justify-between p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                  <AlertTriangle className="h-6 w-6 text-destructive" />
+                </div>
+                <div>
+                  <p className="font-display font-bold text-xl text-destructive">Essai terminé</p>
+                  <p className="text-muted-foreground">
+                    Votre essai gratuit est terminé. Souscrivez à un abonnement pour continuer.
+                  </p>
+                </div>
               </div>
-            </div>
-            <Badge variant="secondary" className="text-sm">
-              Actif
-            </Badge>
-          </CardContent>
-        </Card>
+              <Badge variant="destructive" className="text-sm">
+                Expiré
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Active Plan Banner */}
+        {isActive && (
+          <Card className="border-success/20 bg-success/5">
+            <CardContent className="flex items-center justify-between p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+                  <Star className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Plan actuel</p>
+                  <p className="font-display font-bold text-xl capitalize">{currentPlan}</p>
+                </div>
+              </div>
+              <Badge className="bg-success text-success-foreground text-sm">
+                Actif
+              </Badge>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Plans Grid */}
         <div className="grid gap-6 md:grid-cols-3">
           {plans.map((plan) => {
-            const isCurrentPlan = plan.id === currentPlan;
+            const isCurrentPlan = plan.id === currentPlan && isActive;
+            const isTrialPlan = plan.id === "pro" && isTrialing && !isTrialExpired;
             const isUpgrade = plans.findIndex(p => p.id === plan.id) > plans.findIndex(p => p.id === currentPlan);
+            const isProcessing = selectedPlan === plan.id && processingPayment;
             
             return (
               <Card
@@ -199,13 +245,22 @@ export default function Subscription() {
                 className={cn(
                   "relative transition-all duration-300 hover:shadow-lg",
                   plan.popular && "border-primary shadow-soft",
-                  isCurrentPlan && "ring-2 ring-primary"
+                  isCurrentPlan && "ring-2 ring-success",
+                  isTrialPlan && !isActive && "ring-2 ring-primary"
                 )}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary text-primary-foreground">
                       Populaire
+                    </Badge>
+                  </div>
+                )}
+
+                {isTrialPlan && !isActive && (
+                  <div className="absolute -top-3 right-4">
+                    <Badge variant="secondary" className="bg-primary/10 text-primary">
+                      Essai actif
                     </Badge>
                   </div>
                 )}
@@ -254,20 +309,31 @@ export default function Subscription() {
                   <Button
                     className="w-full"
                     variant={isCurrentPlan ? "secondary" : plan.popular ? "default" : "outline"}
-                    disabled={isCurrentPlan || upgrading !== null}
+                    disabled={isCurrentPlan || processingPayment}
                     onClick={() => handleSelectPlan(plan.id)}
                   >
-                    {upgrading === plan.id ? (
+                    {isProcessing ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Traitement...
+                        Redirection...
                       </>
                     ) : isCurrentPlan ? (
                       "Plan actuel"
+                    ) : isTrialPlan && !isActive ? (
+                      <>
+                        Payer maintenant
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                      </>
                     ) : isUpgrade ? (
-                      "Passer à ce plan"
+                      <>
+                        Passer à ce plan
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                      </>
                     ) : (
-                      "Changer de plan"
+                      <>
+                        Changer de plan
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                      </>
                     )}
                   </Button>
                 </CardContent>
@@ -276,12 +342,37 @@ export default function Subscription() {
           })}
         </div>
 
+        {/* Payment Info */}
+        <Card className="bg-muted/30">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Paiement sécurisé via CinetPay</h3>
+                <p className="text-sm text-muted-foreground">
+                  Tous les paiements sont traités de manière sécurisée via CinetPay. 
+                  Vous pouvez payer par Mobile Money (Orange Money, MTN, Wave) ou carte bancaire.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* FAQ Section */}
         <Card>
           <CardHeader>
             <CardTitle>Questions fréquentes</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div>
+              <p className="font-medium">Comment fonctionne l'essai gratuit ?</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Vous bénéficiez de 14 jours d'accès gratuit à toutes les fonctionnalités du plan Pro. 
+                Aucune carte de crédit requise. À la fin de l'essai, vous pouvez choisir le plan qui vous convient.
+              </p>
+            </div>
             <div>
               <p className="font-medium">Puis-je changer de plan à tout moment ?</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -292,8 +383,8 @@ export default function Subscription() {
             <div>
               <p className="font-medium">Comment fonctionne la facturation ?</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Vous êtes facturé mensuellement. En cas de changement de plan, 
-                le nouveau tarif s'applique au prochain cycle de facturation.
+                Vous êtes facturé mensuellement. Le paiement est traité via CinetPay 
+                avec les méthodes de paiement locales (Mobile Money, carte bancaire).
               </p>
             </div>
             <div>
