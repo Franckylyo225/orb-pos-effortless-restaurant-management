@@ -14,14 +14,18 @@ import {
   CreditCard,
   ChefHat,
   History,
+  Clock,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { useSubscription } from "@/hooks/useSubscription";
 import { useToast } from "@/hooks/use-toast";
 import { RestaurantSwitcher } from "./RestaurantSwitcher";
+import { Badge } from "@/components/ui/badge";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Vue d'ensemble", href: "/dashboard" },
@@ -46,6 +50,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
   const { restaurant, profile, loading: restaurantLoading } = useRestaurant();
+  const { isTrialing, trialDaysRemaining, isTrialExpired } = useSubscription();
   const { toast } = useToast();
 
   // Redirect if not logged in
@@ -82,6 +87,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!user || !restaurant) {
     return null;
   }
+
+  const showTrialBanner = isTrialing && !isTrialExpired && trialDaysRemaining <= 7;
+  const showExpiredBanner = isTrialing && isTrialExpired;
 
   return (
     <div className="min-h-screen bg-muted/30 flex">
@@ -140,14 +148,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               to="/dashboard/subscription"
               className="block px-3 py-2 rounded-lg hover:bg-muted transition-colors"
             >
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <CreditCard size={12} />
                 <span>
-                  {restaurant?.subscription_plan === "premium"
-                    ? "Plan Premium"
-                    : restaurant?.subscription_plan === "pro"
-                    ? "Plan Pro"
-                    : "Plan Basic"}
+                  {isTrialing && !isTrialExpired ? (
+                    <span className="flex items-center gap-1">
+                      Essai Pro
+                      <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                        {trialDaysRemaining}j
+                      </Badge>
+                    </span>
+                  ) : restaurant?.subscription_plan === "premium" ? (
+                    "Plan Premium"
+                  ) : restaurant?.subscription_plan === "pro" ? (
+                    "Plan Pro"
+                  ) : (
+                    "Plan Basic"
+                  )}
                 </span>
               </div>
             </Link>
@@ -169,11 +186,56 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content */}
       <main
         className={cn(
-          "flex-1 transition-all duration-300",
+          "flex-1 transition-all duration-300 flex flex-col",
           collapsed ? "ml-20" : "ml-64"
         )}
       >
-        {children}
+        {/* Trial Expiring Banner */}
+        {showTrialBanner && (
+          <div className="bg-warning/10 border-b border-warning/20 px-4 py-3">
+            <div className="flex items-center justify-between max-w-screen-xl mx-auto">
+              <div className="flex items-center gap-3">
+                <Clock className="h-5 w-5 text-warning" />
+                <p className="text-sm">
+                  <span className="font-medium">Votre essai gratuit expire dans {trialDaysRemaining} jour{trialDaysRemaining > 1 ? "s" : ""}.</span>
+                  {" "}Passez à un plan payant pour continuer à profiter de toutes les fonctionnalités.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => navigate("/dashboard/subscription")}
+              >
+                Voir les offres
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Trial Expired Banner */}
+        {showExpiredBanner && (
+          <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-3">
+            <div className="flex items-center justify-between max-w-screen-xl mx-auto">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <p className="text-sm">
+                  <span className="font-medium">Votre essai gratuit est terminé.</span>
+                  {" "}Certaines fonctionnalités sont maintenant limitées. Souscrivez à un abonnement pour les débloquer.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => navigate("/dashboard/subscription")}
+              >
+                S'abonner maintenant
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1">
+          {children}
+        </div>
       </main>
     </div>
   );
