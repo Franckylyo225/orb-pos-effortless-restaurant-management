@@ -39,6 +39,7 @@ import { FeatureGate } from "@/components/subscription";
 import { useSubscriptionFeatures } from "@/hooks/useSubscriptionFeatures";
 import { StockAdjustmentDialog } from "@/components/stock/StockAdjustmentDialog";
 import { LowStockAlert } from "@/components/stock/LowStockAlert";
+import { StockMovementHistory } from "@/components/stock/StockMovementHistory";
 
 function StockContent() {
   const { suppliers, products, lowStockProducts, loading, addSupplier, addProduct, addStockMovement, deleteProduct } = useStock();
@@ -402,8 +403,9 @@ function StockContent() {
                           </Button>
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-border">
+                      <div className="mt-3 pt-3 border-t border-border flex gap-2">
                         <StockAdjustmentDialog product={product} />
+                        <StockMovementHistory product={product} />
                       </div>
                     </div>
                   </div>
