@@ -13,6 +13,8 @@ import {
   TrendingDown,
   Loader2,
   Truck,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { useStock } from "@/hooks/useStock";
 import {
@@ -49,6 +51,7 @@ function StockContent() {
   const [showAddStock, setShowAddStock] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -308,8 +311,8 @@ function StockContent() {
           </TabsList>
 
           <TabsContent value="products" className="space-y-4">
-            {/* Search */}
-            <div className="flex gap-4">
+            {/* Search and View Toggle */}
+            <div className="flex gap-4 items-center justify-between">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
                 <Input
@@ -318,6 +321,24 @@ function StockContent() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 h-12"
                 />
+              </div>
+              <div className="flex gap-1 bg-muted rounded-lg p-1">
+                <Button
+                  variant={viewMode === "grid" ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setViewMode("grid")}
+                  className="h-9 w-9"
+                >
+                  <LayoutGrid size={18} />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "secondary" : "ghost"}
+                  size="icon"
+                  onClick={() => setViewMode("list")}
+                  className="h-9 w-9"
+                >
+                  <List size={18} />
+                </Button>
               </div>
             </div>
 
@@ -334,84 +355,177 @@ function StockContent() {
               </div>
             )}
 
-            {/* Products Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProducts.map((product) => {
-                const isLow = product.current_stock <= product.min_stock_threshold;
-                return (
-                  <div
-                    key={product.id}
-                    className={`bg-card rounded-2xl border overflow-hidden transition-all hover:shadow-medium ${
-                      isLow ? "border-destructive/50" : "border-border/50"
-                    }`}
-                  >
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <h3 className="font-semibold text-lg">{product.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {product.supplier?.name || "Pas de fournisseur"}
-                          </p>
-                        </div>
-                        {isLow && (
-                          <div className="w-8 h-8 rounded-full bg-destructive/20 text-destructive flex items-center justify-center">
-                            <AlertTriangle size={16} />
+            {/* Products Grid View */}
+            {viewMode === "grid" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredProducts.map((product) => {
+                  const isLow = product.current_stock <= product.min_stock_threshold;
+                  return (
+                    <div
+                      key={product.id}
+                      className={`bg-card rounded-2xl border overflow-hidden transition-all hover:shadow-medium ${
+                        isLow ? "border-destructive/50" : "border-border/50"
+                      }`}
+                    >
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <h3 className="font-semibold text-lg">{product.name}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {product.supplier?.name || "Pas de fournisseur"}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <p className={`text-3xl font-bold ${isLow ? "text-destructive" : "text-foreground"}`}>
-                            {Number(product.current_stock).toFixed(1)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {product.unit} • Seuil: {product.min_stock_threshold}
-                          </p>
+                          {isLow && (
+                            <div className="w-8 h-8 rounded-full bg-destructive/20 text-destructive flex items-center justify-center">
+                              <AlertTriangle size={16} />
+                            </div>
+                          )}
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="text-success"
-                            onClick={() => {
-                              setSelectedProduct(product.id);
-                              setStockMovement({ ...stockMovement, type: "in" });
-                              setShowAddStock(true);
-                            }}
-                          >
-                            <TrendingUp size={18} />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="text-warning"
-                            onClick={() => {
-                              setSelectedProduct(product.id);
-                              setStockMovement({ ...stockMovement, type: "out" });
-                              setShowAddStock(true);
-                            }}
-                          >
-                            <TrendingDown size={18} />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="text-destructive"
-                            onClick={() => deleteProduct(product.id)}
-                          >
-                            <Trash2 size={18} />
-                          </Button>
+                        <div className="flex items-end justify-between">
+                          <div>
+                            <p className={`text-3xl font-bold ${isLow ? "text-destructive" : "text-foreground"}`}>
+                              {Number(product.current_stock).toFixed(1)}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {product.unit} • Seuil: {product.min_stock_threshold}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-success"
+                              onClick={() => {
+                                setSelectedProduct(product.id);
+                                setStockMovement({ ...stockMovement, type: "in" });
+                                setShowAddStock(true);
+                              }}
+                            >
+                              <TrendingUp size={18} />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-warning"
+                              onClick={() => {
+                                setSelectedProduct(product.id);
+                                setStockMovement({ ...stockMovement, type: "out" });
+                                setShowAddStock(true);
+                              }}
+                            >
+                              <TrendingDown size={18} />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => deleteProduct(product.id)}
+                            >
+                              <Trash2 size={18} />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-border flex gap-2">
-                        <StockAdjustmentDialog product={product} />
-                        <StockMovementHistory product={product} />
+                        <div className="mt-3 pt-3 border-t border-border flex gap-2">
+                          <StockAdjustmentDialog product={product} />
+                          <StockMovementHistory product={product} />
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Products List View */}
+            {viewMode === "list" && (
+              <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Produit</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground hidden md:table-cell">Fournisseur</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Stock</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground hidden sm:table-cell">Seuil</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground hidden lg:table-cell">Coût/unité</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredProducts.map((product) => {
+                      const isLow = product.current_stock <= product.min_stock_threshold;
+                      return (
+                        <tr key={product.id} className={`hover:bg-muted/30 transition-colors ${isLow ? "bg-destructive/5" : ""}`}>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {isLow && <AlertTriangle size={16} className="text-destructive" />}
+                              <div>
+                                <p className="font-medium">{product.name}</p>
+                                <p className="text-sm text-muted-foreground md:hidden">{product.supplier?.name || "-"}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground hidden md:table-cell">
+                            {product.supplier?.name || "-"}
+                          </td>
+                          <td className={`py-3 px-4 text-right font-semibold ${isLow ? "text-destructive" : ""}`}>
+                            {Number(product.current_stock).toFixed(1)} {product.unit}
+                          </td>
+                          <td className="py-3 px-4 text-right text-muted-foreground hidden sm:table-cell">
+                            {product.min_stock_threshold} {product.unit}
+                          </td>
+                          <td className="py-3 px-4 text-right text-muted-foreground hidden lg:table-cell">
+                            {product.cost_per_unit ? `${product.cost_per_unit.toLocaleString()} FCFA` : "-"}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-success"
+                                onClick={() => {
+                                  setSelectedProduct(product.id);
+                                  setStockMovement({ ...stockMovement, type: "in" });
+                                  setShowAddStock(true);
+                                }}
+                              >
+                                <TrendingUp size={16} />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-warning"
+                                onClick={() => {
+                                  setSelectedProduct(product.id);
+                                  setStockMovement({ ...stockMovement, type: "out" });
+                                  setShowAddStock(true);
+                                }}
+                              >
+                                <TrendingDown size={16} />
+                              </Button>
+                              <StockAdjustmentDialog product={product} />
+                              <StockMovementHistory product={product} />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => deleteProduct(product.id)}
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {filteredProducts.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Aucun produit trouvé
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="suppliers" className="space-y-4">
