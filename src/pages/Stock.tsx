@@ -16,6 +16,7 @@ import {
   LayoutGrid,
   List,
   Filter,
+  RotateCcw,
 } from "lucide-react";
 import { useStock } from "@/hooks/useStock";
 import {
@@ -366,6 +367,21 @@ function StockContent() {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                {(searchQuery || supplierFilter !== "all" || stockStatusFilter !== "all") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSupplierFilter("all");
+                      setStockStatusFilter("all");
+                    }}
+                    className="h-12 gap-2"
+                  >
+                    <RotateCcw size={16} />
+                    Réinitialiser
+                  </Button>
+                )}
               </div>
               <div className="flex gap-1 bg-muted rounded-lg p-1">
                 <Button
