@@ -15,6 +15,7 @@ import {
   Truck,
   LayoutGrid,
   List,
+  Filter,
 } from "lucide-react";
 import { useStock } from "@/hooks/useStock";
 import {
@@ -52,6 +53,8 @@ function StockContent() {
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [supplierFilter, setSupplierFilter] = useState<string>("all");
+  const [stockStatusFilter, setStockStatusFilter] = useState<string>("all");
 
   const [newProduct, setNewProduct] = useState({
     name: "",
@@ -76,9 +79,15 @@ function StockContent() {
     notes: "",
   });
 
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSupplier = supplierFilter === "all" || product.supplier_id === supplierFilter;
+    const isLow = product.current_stock <= product.min_stock_threshold;
+    const matchesStatus = stockStatusFilter === "all" || 
+      (stockStatusFilter === "low" && isLow) || 
+      (stockStatusFilter === "normal" && !isLow);
+    return matchesSearch && matchesSupplier && matchesStatus;
+  });
 
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.unit) return;
@@ -311,16 +320,52 @@ function StockContent() {
           </TabsList>
 
           <TabsContent value="products" className="space-y-4">
-            {/* Search and View Toggle */}
-            <div className="flex gap-4 items-center justify-between">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
-                <Input
-                  placeholder="Rechercher un produit..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12"
-                />
+            {/* Search, Filters and View Toggle */}
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full md:w-auto">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+                  <Input
+                    placeholder="Rechercher un produit..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-12"
+                  />
+                </div>
+                <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px] h-12">
+                    <Filter size={16} className="mr-2 text-muted-foreground" />
+                    <SelectValue placeholder="Fournisseur" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les fournisseurs</SelectItem>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={stockStatusFilter} onValueChange={setStockStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[160px] h-12">
+                    <SelectValue placeholder="État stock" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les états</SelectItem>
+                    <SelectItem value="low">
+                      <span className="flex items-center gap-2">
+                        <AlertTriangle size={14} className="text-destructive" />
+                        Stock bas
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="normal">
+                      <span className="flex items-center gap-2">
+                        <Package size={14} className="text-success" />
+                        Stock normal
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-1 bg-muted rounded-lg p-1">
                 <Button
