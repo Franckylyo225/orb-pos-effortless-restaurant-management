@@ -190,11 +190,18 @@ export function RecipeEditor({ menuItemId, menuItemName, sellingPrice }: RecipeE
                       </div>
                       <div className="space-y-2">
                         <Label>Unité</Label>
-                        <Input
-                          value={unit}
-                          onChange={(e) => setUnit(e.target.value)}
-                          placeholder="ex: g, kg, ml..."
-                        />
+                        <Select value={unit} onValueChange={setUnit}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="kg">kg</SelectItem>
+                            <SelectItem value="g">g</SelectItem>
+                            <SelectItem value="L">L</SelectItem>
+                            <SelectItem value="ml">ml</SelectItem>
+                            <SelectItem value="pièce">pièce</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <Button
