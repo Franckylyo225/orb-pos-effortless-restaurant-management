@@ -934,6 +934,10 @@ export type Database = {
       }
       check_account_locked: { Args: { user_email: string }; Returns: Json }
       check_stock_availability: { Args: never; Returns: Json }
+      convert_unit: {
+        Args: { p_from_unit: string; p_quantity: number; p_to_unit: string }
+        Returns: number
+      }
       decrement_stock_on_sale: {
         Args: { p_order_id: string; p_user_id?: string }
         Returns: Json
