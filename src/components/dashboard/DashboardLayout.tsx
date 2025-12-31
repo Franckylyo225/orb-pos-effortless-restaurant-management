@@ -23,8 +23,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
 import { useToast } from "@/hooks/use-toast";
 import { RestaurantSwitcher } from "./RestaurantSwitcher";
+import { OfflineIndicator } from "./OfflineIndicator";
 import { Badge } from "@/components/ui/badge";
 
 const menuItems = [
@@ -51,6 +53,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, signOut, loading: authLoading } = useAuth();
   const { restaurant, profile, loading: restaurantLoading } = useRestaurant();
   const { isTrialing, trialDaysRemaining, isTrialExpired } = useSubscription();
+  const { 
+    isOnline, 
+    isSyncing, 
+    pendingActionsCount, 
+    lastSyncTime, 
+    syncPendingActions 
+  } = useOfflineMode();
   const { toast } = useToast();
 
   // Redirect if not logged in
@@ -110,12 +119,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <span className="font-display font-bold text-lg">ORBI POS</span>
             )}
           </Link>
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="hidden md:flex w-8 h-8 rounded-lg bg-muted items-center justify-center hover:bg-muted/80 transition-colors"
-          >
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
+          <div className="flex items-center gap-1">
+            {!collapsed && (
+              <OfflineIndicator
+                isOnline={isOnline}
+                isSyncing={isSyncing}
+                pendingActionsCount={pendingActionsCount}
+                lastSyncTime={lastSyncTime}
+                onSync={syncPendingActions}
+              />
+            )}
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="hidden md:flex w-8 h-8 rounded-lg bg-muted items-center justify-center hover:bg-muted/80 transition-colors"
+            >
+              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
+          </div>
         </div>
 
         {/* Navigation */}

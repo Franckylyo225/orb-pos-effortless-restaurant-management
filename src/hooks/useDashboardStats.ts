@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { useOfflineMode } from "@/hooks/useOfflineMode";
 
 interface DashboardStats {
   todayRevenue: number;
@@ -33,8 +34,18 @@ interface TopProduct {
   revenue: number;
 }
 
+interface CachedDashboardData {
+  stats: DashboardStats;
+  recentOrders: RecentOrder[];
+  stockAlerts: StockAlert[];
+  topProducts: TopProduct[];
+}
+
+const CACHE_KEY = "dashboard_stats";
+
 export function useDashboardStats() {
   const { restaurant } = useRestaurant();
+  const { isOnline, saveToLocal, getFromLocal, registerSyncCallback } = useOfflineMode();
   const [stats, setStats] = useState<DashboardStats>({
     todayRevenue: 0,
     todayOrders: 0,
@@ -45,10 +56,32 @@ export function useDashboardStats() {
   const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOfflineData, setIsOfflineData] = useState(false);
+
+  // Charger les données depuis le cache local
+  const loadFromCache = () => {
+    const cached = getFromLocal<CachedDashboardData>(`${CACHE_KEY}_${restaurant?.id}`);
+    if (cached) {
+      setStats(cached.stats);
+      setRecentOrders(cached.recentOrders);
+      setStockAlerts(cached.stockAlerts);
+      setTopProducts(cached.topProducts);
+      setIsOfflineData(true);
+      setLoading(false);
+      return true;
+    }
+    return false;
+  };
 
   const fetchDashboardData = async () => {
     if (!restaurant?.id) {
       setLoading(false);
+      return;
+    }
+
+    // Si hors-ligne, charger depuis le cache
+    if (!isOnline) {
+      loadFromCache();
       return;
     }
 
@@ -153,12 +186,54 @@ export function useDashboardStats() {
       .slice(0, 4);
 
     setTopProducts(topProductsArray);
+    setIsOfflineData(false);
     setLoading(false);
+
+    // Sauvegarder dans le cache local
+    saveToLocal(`${CACHE_KEY}_${restaurant.id}`, {
+      stats: {
+        todayRevenue,
+        todayOrders: ordersCount,
+        todayCustomers: customersEstimate,
+        averageTicket: Math.round(averageTicket),
+      },
+      recentOrders: (recent || []).map((order: any) => ({
+        id: order.id,
+        order_number: order.order_number,
+        table_name: order.tables?.name || "Comptoir",
+        items_count: order.order_items?.length || 0,
+        total: Number(order.total || 0),
+        status: order.status,
+        created_at: order.created_at,
+      })),
+      stockAlerts: (alerts || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        current_stock: Number(p.current_stock || 0),
+        min_stock_threshold: Number(p.min_stock_threshold || 5),
+        unit: p.unit || "unité",
+      })),
+      topProducts: topProductsArray,
+    });
   };
 
+  // Enregistrer le callback de synchronisation
   useEffect(() => {
-    fetchDashboardData();
+    registerSyncCallback("dashboard", fetchDashboardData);
   }, [restaurant?.id]);
+
+  // Charger les données au démarrage
+  useEffect(() => {
+    // Essayer d'abord le cache pour un affichage rapide
+    const hasCached = loadFromCache();
+    
+    // Puis mettre à jour depuis le serveur si en ligne
+    if (isOnline) {
+      fetchDashboardData();
+    } else if (!hasCached) {
+      setLoading(false);
+    }
+  }, [restaurant?.id, isOnline]);
 
   // Real-time updates
   useEffect(() => {
@@ -183,5 +258,5 @@ export function useDashboardStats() {
     };
   }, [restaurant?.id]);
 
-  return { stats, recentOrders, stockAlerts, topProducts, loading, refetch: fetchDashboardData };
+  return { stats, recentOrders, stockAlerts, topProducts, loading, isOfflineData, refetch: fetchDashboardData };
 }
