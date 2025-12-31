@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Loader2,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -28,7 +29,7 @@ const statusLabels: Record<string, { label: string; className: string }> = {
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile, restaurant } = useRestaurant();
-  const { stats, recentOrders, stockAlerts, topProducts, loading } = useDashboardStats();
+  const { stats, recentOrders, stockAlerts, topProducts, loading, isOfflineData } = useDashboardStats();
 
   const displayName = profile?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "Utilisateur";
 
@@ -72,6 +73,19 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="p-6 md:p-8 space-y-8">
+        {/* Offline Mode Banner */}
+        {isOfflineData && (
+          <div className="bg-warning/10 border border-warning/20 rounded-xl px-4 py-3 flex items-center gap-3">
+            <WifiOff className="h-5 w-5 text-warning flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-warning">Mode hors-ligne</p>
+              <p className="text-xs text-muted-foreground">
+                Les données affichées proviennent du cache local. Elles seront synchronisées dès que la connexion sera rétablie.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
